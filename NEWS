@@ -1,3 +1,5 @@
+Changes since release 0.5:
+
 Changes in release 0.5:
 
 * genromfs builds on Linux (libc5, glibc), FreeBSD, Solaris, with gcc
@@ -13,3 +15,5 @@ Changes in release 0.5:
 * spelling fixes
 
 Changes in release 0.3:
+
+* in progress
