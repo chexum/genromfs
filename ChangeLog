@@ -1,3 +1,9 @@
+2002-01-19 17:20  Janos Farkas  <chexum@shadow.banki.hu>
+
+	* genromfs.c: refactor fnmatch() usage to nodematch()
+	* genromfs.c: nad => and
+	* romfs.txt: thinkos
+
 2002-01-18 11:22  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* imported from http://www.uclinux.org/pub/uClinux/utilities/
