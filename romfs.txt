@@ -156,6 +156,10 @@ traffic, so you are welcome to join it to discuss your ideas. :)
 It's run by ezmlm, so you can subscribe to it by sending a message
 to romfs-subscribe@shadow.banki.hu, the content is irrelevant.
 
+There is a web page about romfs at:
+
+  http://romfs.sourceforge.net
+
 Pending issues:
 
 - Permissions and owner information are pretty essential features of a
@@ -181,7 +185,6 @@ limiting factor in my eyes.
 - Where it is used?
 
 - Does it work on other architectures than intel and motorola?
-
 
 Have fun,
 Janos Farkas <chexum@shadow.banki.hu>
