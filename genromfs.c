@@ -343,7 +343,11 @@ void dumpnode(struct filenode *node, FILE *f)
 		offset = 0;
 		max = node->size;
 		/* XXX warn about size mismatch */
-		fd = open(node->realname, O_RDONLY);
+		fd = open(node->realname, O_RDONLY
+#ifdef O_BINARY
+| O_BINARY
+#endif
+);
 		if (fd) {
 			while(offset < max) {
 				avail = max-offset < sizeof(bigbuf) ? max-offset : sizeof(bigbuf);
@@ -776,9 +780,9 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	if (strcmp(outf, "-") == 0) {
-		f = fdopen(1,"w");
+		f = fdopen(1,"wb");
 	} else
-		f = fopen(outf, "w");
+		f = fopen(outf, "wb");
 
 	if (!f) {
 		perror(outf);
