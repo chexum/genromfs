@@ -1,7 +1,8 @@
 
 /* Generate a ROMFS file system
  *
- * Copyright (C) 1997  Janos Farkas <chexum@shadow.banki.hu>
+ * Copyright (C) 1997,1998	Janos Farkas <chexum@shadow.banki.hu>
+ * Copyright (C) 1998		Jakub Jelinek <jj@ultra.linux.cz>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -11,6 +12,7 @@
  * Changes:
  *	2 Jan 1997				Initial release
  *      6 Aug 1997				Second release
+ *     11 Sep 1998				Alignment support
  */
 
 /*
@@ -42,6 +44,11 @@
  *
  * # genromfs -d rescue -f testimg.rom -V "Install disk"
  *
+ * Other options:
+ * -a N	 force all regular file data to be aligned on N bytes boundary
+ * -A N,/name force named file(s) (shell globbing applied against the filenames)
+ *       to be aligned on N bytes boundary
+ * In both cases, N must be a power of two.
  */
 
 /*
@@ -56,9 +63,20 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 #include <sys/time.h>
 #include <netinet/in.h>
 #include <sys/sysmacros.h>
+
+#ifdef __GLIBC__
+typedef unsigned short umode_t;
+typedef __signed__ char __s8;
+typedef unsigned char __u8;
+typedef __signed__ short __s16;
+typedef unsigned short __u16;
+typedef __signed__ int __s32;
+typedef unsigned int __u32;
+#endif
 
 struct romfh {
 	int nextfh;
@@ -96,9 +114,16 @@ struct filenode {
 	dev_t ondev;
 	dev_t devnode;
 	ino_t onino;
-	umode_t modes;
+	mode_t modes;
 	unsigned int offset;
 	unsigned int size;
+	unsigned int pad;
+};
+
+struct aligns {
+	int align;
+	struct aligns *next;
+	char pattern[0];
 };
 
 void initlist(struct filehdr *fh)
@@ -125,9 +150,7 @@ void shownode(int level, struct filenode *node, FILE *f)
 {
 	struct filenode *p;
 	fprintf(f, "%-4d %-20s [0x%-8x, 0x%-8x] %07o, sz %5u, at 0x%-6x", level, node->name,
-		node->ondev, (int)node->onino,
-		node->modes,
-		node->size, node->offset);
+		(int)node->ondev, (int)node->onino, node->modes, node->size, node->offset);
 	if (node->orig_link)
 		fprintf(f, " [link to 0x%-6x]", node->orig_link->offset);
 	fprintf(f, "\n");
@@ -143,6 +166,32 @@ void shownode(int level, struct filenode *node, FILE *f)
 static char bigbuf[4096];
 static char fixbuf[512];
 static int atoffs = 0;
+static int align = 16;
+struct aligns *alignlist = NULL;
+int realbase;
+
+int findalign(struct filenode *node)
+{
+	struct aligns *pa;
+	int i;
+	
+	if (S_ISREG(node->modes))
+		i = align;
+	else
+		i = 16;
+	for (pa = alignlist; pa; pa = pa->next) {
+		if (pa->align > i) {
+			if (pa->pattern[0] == '/') {
+				if (!fnmatch(pa->pattern, node->realname + realbase, FNM_PATHNAME|FNM_PERIOD))
+					i = pa->align;
+			} else {
+				if (!fnmatch(pa->pattern, node->name, FNM_PATHNAME|FNM_PERIOD))
+					i = pa->align;
+			}
+		}
+	}
+	return i;
+}
 
 int romfs_checksum(void *data, int size)
 {
@@ -245,6 +294,8 @@ void dumpnode(struct filenode *node, FILE *f)
 	ri.spec = 0;
 	ri.size = htonl(node->size);
 	ri.checksum = htonl(0x55555555);
+	if (node->pad)
+		dumpzero(node->pad, f);
 	if (node->next && node->next->next)
 		ri.nextfh = ntohl(node->next->offset);
 	if ((node->modes & 0111) &&
@@ -346,7 +397,7 @@ void freenode(struct filenode *n)
 	/* Rare, not yet */
 }
 
-void setnode(struct filenode *n, dev_t dev, ino_t ino, umode_t um)
+void setnode(struct filenode *n, dev_t dev, ino_t ino, mode_t um)
 {
 	n->ondev = dev;
 	n->onino = ino;
@@ -402,6 +453,7 @@ struct filenode *newnode(const char *base, const char *name, int curroffset)
 	node->devnode = 0;
 	node->orig_link = NULL;
 	node->offset = curroffset;
+	node->pad = 0;
 
 	return node;
 }
@@ -430,6 +482,20 @@ int spaceneeded(struct filenode *node)
 	return 16 + ALIGNUP16(strlen(node->name)+1) + ALIGNUP16(node->size);
 }
 
+int alignnode(struct filenode *node, int curroffset, int extraspace)
+{
+	int align = findalign(node), d;
+			
+	d = ((curroffset + extraspace) & (align - 1));
+	if (d) {
+		align -= d;
+		curroffset += align;
+		node->offset += align;
+		node->pad = align;
+	}
+	return curroffset;
+}
+
 int processdir(int level, const char *base, const char *dirname, struct stat *sb,
 	struct filenode *dir, struct filenode *root, int curroffset)
 {
@@ -446,13 +512,13 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 		if (!lstat(link->realname, sb)) {
 			setnode(link, sb->st_dev, sb->st_ino, sb->st_mode);
 			append(&dir->dirlist, link);
-			curroffset += spaceneeded(link);
+			curroffset = alignnode(link, curroffset, 0) + spaceneeded(link);
 			n = newnode(base, "..", curroffset);
 			if (!lstat(n->realname, sb)) {
 				setnode(n, sb->st_dev, sb->st_ino, sb->st_mode);
 				append(&dir->dirlist, n);
 				n->orig_link = link;
-				curroffset += spaceneeded(n);
+				curroffset = alignnode(n, curroffset, 0) + spaceneeded(n);
 			}
 		}
 	}
@@ -480,12 +546,14 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 		append(&dir->dirlist, n);
 		if (link) {
 			n->orig_link = link;
-			curroffset += spaceneeded(n);
+			curroffset = alignnode(n, curroffset, 0) + spaceneeded(n);
 			continue;
 		}
 		if (S_ISREG(sb->st_mode)) {
+			curroffset = alignnode(n, curroffset, spaceneeded(n));
 			n->size = sb->st_size;
-		}
+		} else
+			curroffset = alignnode(n, curroffset, 0);
 		if (S_ISLNK(sb->st_mode)) {
 			n->size = sb->st_size;
 		}
@@ -510,6 +578,8 @@ void showhelp(const char *argv0)
 	printf("  -d DIRECTORY           Use this directory as source\n");
 	printf("  -v                     (Too) verbose operation\n");
 	printf("  -V VOLUME              Use the specified volume name\n");
+	printf("  -a ALIGN               Align regular file data to ALIGN bytes\n");
+	printf("  -A ALIGN,PATTERN	 Align all objects matching pattern to at least ALIGN bytes\n");
 	printf("  -h                     Show this help\n");
 	printf("\n");
 	printf("Report bugs to chexum@shadow.banki.hu\n");
@@ -526,9 +596,12 @@ int main(int argc, char *argv[])
 	struct filenode *root;
 	struct stat sb;
 	int lastoff;
+	int i;
+	char *p;
+	struct aligns *pa, *pa2;
 	FILE *f;
 
-	while ((c = getopt(argc, argv, "V:vd:f:h")) != EOF) {
+	while ((c = getopt(argc, argv, "V:vd:f:ha:A:")) != EOF) {
 		switch(c) {
 		case 'd':
 			dir = optarg;
@@ -545,6 +618,34 @@ int main(int argc, char *argv[])
 		case 'h':
 			showhelp(argv[0]);
 			exit(0);
+		case 'a':
+			align = strtoul(optarg, NULL, 0);
+			if (align < 16 || (align & (align - 1))) {
+				fprintf(stderr, "Align has to be at least 16 bytes nad a power of two\n");
+				exit(1);
+			}
+			break;
+		case 'A':
+			i = strtoul(optarg, &p, 0);
+			if (i < 16 || (i & (i - 1))) {
+				fprintf(stderr, "Align has to be at least 16 bytes nad a power of two\n");
+				exit(1);
+			}
+			if (*p != ',' || !p[1]) {
+				fprintf(stderr, "-A takes N,PATTERN format of argument, where N is a number\n");
+				exit(1);
+			}
+			pa = (struct aligns *)malloc(sizeof(*pa) + strlen(p));
+			pa->align = i;
+			pa->next = NULL;
+			strcpy(pa->pattern, p + 1);
+			if (!alignlist)
+				alignlist = pa;
+			else {
+				for (pa2 = alignlist; pa2->next; pa2 = pa2->next);
+				pa2->next = pa;
+			}
+			break;
 		default:
 			exit(1);
 		}
@@ -568,7 +669,8 @@ int main(int argc, char *argv[])
 		perror(outf);
 		exit(1);
 	}
-
+	
+	realbase = strlen(dir);
 	root = newnode(dir, volname, 0);
 	lastoff = processdir (1, dir, dir, &sb, root, root, spaceneeded(root));
 	if (verbose)

@@ -1,3 +1,9 @@
+Mon Sep 21 16:35:33 1998  Jakub Jelinek  <jj@ultra.linux.cz>
+
+	* genromfs.c: add support for `-a' and `-A'.
+
+	* genromfs.8: document it.
+
 Tue Aug  5 15:54:47 1997  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* Version 0.2.
