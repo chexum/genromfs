@@ -3,7 +3,7 @@
 
 PACKAGE = genromfs
 VERSION = 0.5
-CFLAGS = -O2 -Wall -DVERSION=$(VERSION)#-g#
+CFLAGS = -O2 -Wall -DVERSION=\"$(VERSION)\"#-g#
 LDFLAGS = -s#-g
 
 DISTDIR = $(PACKAGE)-$(VERSION)
@@ -20,8 +20,10 @@ all: genromfs
 
 genromfs: genromfs.o
 
-distclean clean:
+clean:
 	rm -f genromfs *.o
+
+distclean: clean
 	rm -rf $(DISTDIR) $(DISTDIR).tar.gz
 
 dist:
