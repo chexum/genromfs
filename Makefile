@@ -11,5 +11,11 @@ genromfs: genromfs.o
 clean:
 	rm -f genromfs *.o
 
-install:
-	install genromfs $(DESTDIR)/usr/bin
+install: all install-bin install-man
+
+install-bin:
+	install -m 755 genromfs /usr/bin
+
+install-man:
+	install -m 644 genromfs.8 /usr/man/man8
+
