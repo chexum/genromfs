@@ -727,14 +727,14 @@ int main(int argc, char *argv[])
 		case 'a':
 			align = strtoul(optarg, NULL, 0);
 			if (align < 16 || (align & (align - 1))) {
-				fprintf(stderr, "Align has to be at least 16 bytes nad a power of two\n");
+				fprintf(stderr, "Align has to be at least 16 bytes and a power of two\n");
 				exit(1);
 			}
 			break;
 		case 'A':
 			i = strtoul(optarg, &p, 0);
 			if (i < 16 || (i & (i - 1))) {
-				fprintf(stderr, "Align has to be at least 16 bytes nad a power of two\n");
+				fprintf(stderr, "Align has to be at least 16 bytes and a power of two\n");
 				exit(1);
 			}
 			if (*p != ',' || !p[1]) {
