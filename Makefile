@@ -4,7 +4,7 @@
 all: genromfs
 
 PACKAGE = genromfs
-VERSION = 0.5pre
+VERSION = 0.5
 CC = gcc
 CFLAGS = -O2 -Wall -DVERSION=\"$(VERSION)\"#-g#
 LDFLAGS = -s#-g
