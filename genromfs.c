@@ -154,6 +154,7 @@ void append(struct filehdr *fh, struct filenode *n)
 
 	n->next = tail; n->prev = tail->prev;
 	tail->prev = n; n->prev->next =n;
+	n->parent = fh->owner;
 }
 
 void shownode(int level, struct filenode *node, FILE *f)
