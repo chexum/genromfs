@@ -1,0 +1,36 @@
+.TH GENROMFS 8
+.SH NAME
+genromfs \- programs to create a rom file system
+.SH SYNOPSIS
+.B genromfs
+.I "-f outputdevice [-d sourcedirectory] [-V volumename] [-v]"
+.SH "DESCRIPTION"
+The genromfs program is the 'mkfs' equivalent of the other filesystems, but
+you must tell it from which directory you want to build the
+filesystem.  I.e. all files (and directories) in that directory
+will be part of the newly created filesystem.  Imagine it like
+building a cd image, or creating an archive (tar, zip) file.
+.PP
+Basic Usage:
+.PP
+.B genromfs -d rescue/ -f /dev/fd0
+.PP
+All files in the rescue directory will be written to /dev/fd0 as a
+new romfs filesystem image.  You can mount it (if you have the
+romfs module loaded, or compiled into the kernel) via:
+.PP
+.B mount -t romfs /dev/fd0 /mnt
+.PP
+You can also set the volume name of the filesystem (which is not
+currently used by the kernel) with the -V option.  If you don't
+specify one, genromfs will create a volume name of the form: 'rom
+xxxxxxxx', where the x's represent the current time in a cryptic
+form.
+.PP
+All in all, it's as simple as:
+.PP
+.B genromfs -d rescue -f testimg.rom -V "Install disk"
+.PP
+.SH AUTHOR
+This manual page was written by Christoph Lameter <clameter@debian.org>,
+for the Debian GNU/Linux system.
