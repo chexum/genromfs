@@ -13,7 +13,8 @@ DISTDIR = $(PACKAGE)-$(VERSION)
 
 FILES = COPYING NEWS ChangeLog Makefile \
  genromfs.8 genromfs.c genromfs.lsm \
- readme-kernel-patch genrommkdev romfs.txt
+ readme-kernel-patch genrommkdev romfs.txt \
+ checkdist
 
 prefix = /usr
 bindir = $(prefix)/bin
