@@ -1,3 +1,8 @@
+2002-01-22 10:00  Janos Farkas  <chexum@shadow.banki.hu>
+
+	* NEWS: update version, release 0.5.1.
+	* genromfs.lsm: likewise.
+
 2002-01-22 09:54  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* Makefile: remove mis-installed man-page first.
