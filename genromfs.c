@@ -214,7 +214,6 @@ int romfs_checksum(void *data, int size)
         sum = 0; ptr = data;
         size>>=2;
         while (size>0) {
-		/* big-endian to host-endian */
                 sum += ntohl(*ptr++);
                 size--;
         }
@@ -224,7 +223,6 @@ int romfs_checksum(void *data, int size)
 void fixsum(struct romfh *ri, int size)
 {
 	ri->checksum = 0;
-	/* host-endian to big-endian */
 	ri->checksum = htonl(-romfs_checksum(ri, size));
 }
 
@@ -689,7 +687,7 @@ void showhelp(const char *argv0)
 
 int main(int argc, char *argv[])
 {
-	char c;
+	int c;
 	char *dir = ".";
 	char *outf = NULL;
 	char *volname = NULL;
