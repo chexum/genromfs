@@ -9,7 +9,7 @@
  * 2 of the License, or (at your option) any later version.
  *
  * Changes:
- *	Jan 1997				Initial release
+ *	2 Jan 1997				Initial release
  */
 
 /*
