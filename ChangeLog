@@ -1,17 +1,21 @@
+2002-01-20 10:03  Janos Farkas  <chexum@shadow.banki.hu>
+
+	* Makefile: add prefix/bindir/mandir to ease relocated build.
+
 2002-01-20 09:40  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* genromfs.c: [main()] use int c.
 
 2002-01-20 09:36  Janos Farkas  <chexum@shadow.banki.hu>
 
-	* genromfs.c: include sys/types.h, and use int32_t,
-	clear up hopefully all ntohl/htonl confusion.
+	* genromfs.c: include sys/types.h, and use int32_t, clear up
+	hopefully all ntohl/htonl confusion.
 	(thanks to Debian patches)
 
 2002-01-19 17:20  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* genromfs.c: refactor fnmatch() usage to nodematch()
-	* genromfs.c: nad => and
+	* genromfs.c: spelling nad => and
 	* romfs.txt: thinkos
 
 2002-01-18 11:22  Janos Farkas  <chexum@shadow.banki.hu>
