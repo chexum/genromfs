@@ -70,16 +70,6 @@
 #include <netinet/in.h>	/* Consts & structs defined by the internet system */
 #include <sys/sysmacros.h> /* System macros definition */
 
-#ifdef __GLIBC__
-typedef unsigned short umode_t;
-typedef __signed__ char __s8;
-typedef unsigned char __u8;
-typedef __signed__ short __s16;
-typedef unsigned short __u16;
-typedef __signed__ int __s32;
-typedef unsigned int __u32;
-#endif
-
 struct romfh {
 	int nextfh;
 	int spec;
