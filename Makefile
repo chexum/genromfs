@@ -34,12 +34,12 @@ distclean: clean
 
 dist:
 	./checkdist $(VERSION)
-	rm -rf $(DISTDIR).tar.gz $(DISTDIR); \
-	mkdir $(DISTDIR); \
+	rm -rf $(DISTDIR).tar.gz $(DISTDIR)
+	mkdir $(DISTDIR);
 	for i in $(FILES); do \
 		cp $$i $(DISTDIR)/; \
 	done; \
-	tar --owner=root --group=root -zcf $(DISTDIR).tar.gz $(DISTDIR); \
+	tar --owner=root --group=root -zcf $(DISTDIR).tar.gz $(DISTDIR);
 	rm -rf $(DISTDIR)
 
 install: all install-bin install-man
