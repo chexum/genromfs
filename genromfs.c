@@ -57,11 +57,11 @@
  * Sorry about that.  Feel free to contact me if you have problems.
  */
 
-#include <stdio.h>	/* Userland pieces of the ANSI C standard I/O package  */
-#include <stdlib.h>	/* Userland prototypes of the ANSI C std lib functions */
-#include <string.h>	/* Userland prototypes of the string handling funcs    */
-#include <unistd.h>	/* Userland prototypes of the Unix std system calls    */
-#include <fcntl.h>	/* Flag value for file handling functions              */
+#include <stdio.h>  /* Userland pieces of the ANSI C standard I/O package  */
+#include <stdlib.h> /* Userland prototypes of the ANSI C std lib functions */
+#include <string.h> /* Userland prototypes of the string handling funcs    */
+#include <unistd.h> /* Userland prototypes of the Unix std system calls    */
+#include <fcntl.h>  /* Flag value for file handling functions              */
 #include <time.h>
 #include <fnmatch.h>
 #include <dirent.h>
@@ -160,8 +160,11 @@ void append(struct filehdr *fh, struct filenode *n)
 void shownode(int level, struct filenode *node, FILE *f)
 {
 	struct filenode *p;
-	fprintf(f, "%-4d %-20s [0x%-8x, 0x%-8x] %07o, sz %5u, at 0x%-6x", level, node->name,
-		(int)node->ondev, (int)node->onino, node->modes, node->size, node->offset);
+	fprintf(f, "%-4d %-20s [0x%-8x, 0x%-8x] %07o, sz %5u, at 0x%-6x",
+		level, node->name,
+		(int)node->ondev, (int)node->onino, node->modes, node->size,
+		node->offset);
+
 	if (node->orig_link)
 		fprintf(f, " [link to 0x%-6x]", node->orig_link->offset);
 	fprintf(f, "\n");
@@ -183,24 +186,27 @@ struct aligns *alignlist = NULL;
 struct excludes *excludelist = NULL;
 int realbase;
 
+/* helper function to match an exclusion or align pattern */
+
+int nodematch(char *pattern, struct filenode *node)
+{
+	char *start = node->name;
+	/* XXX: ugly realbase is global */
+	if (pattern[0] == '/') start = node->realname + realbase;
+	return fnmatch(pattern,start,FNM_PATHNAME|FNM_PERIOD);
+}
+
 int findalign(struct filenode *node)
 {
 	struct aligns *pa;
 	int i;
 	
-	if (S_ISREG(node->modes))
-		i = align;
-	else
-		i = 16;
+	if (S_ISREG(node->modes)) i = align;
+	else i = 16;
+
 	for (pa = alignlist; pa; pa = pa->next) {
 		if (pa->align > i) {
-			if (pa->pattern[0] == '/') {
-				if (!fnmatch(pa->pattern, node->realname + realbase, FNM_PATHNAME|FNM_PERIOD))
-					i = pa->align;
-			} else {
-				if (!fnmatch(pa->pattern, node->name, FNM_PATHNAME|FNM_PERIOD))
-					i = pa->align;
-			}
+			if (!nodematch(pa->pattern,node)) i = pa->align;
 		}
 	}
 	return i;
@@ -208,7 +214,7 @@ int findalign(struct filenode *node)
 
 int romfs_checksum(void *data, int size)
 {
-        __s32 sum, *ptr;
+        int32_t sum, *ptr;
 
         sum = 0; ptr = data;
         size>>=2;
@@ -357,6 +363,7 @@ void dumpnode(struct filenode *node, FILE *f)
 		max = (max+15)&~15;
 		while (offset < max) {
 			avail = max-offset < sizeof(bigbuf) ? max-offset : sizeof(bigbuf);
+			memset(bigbuf, 0, avail);
 			dumpdata(bigbuf, avail, f);
 			offset+=avail;
 		}
@@ -556,14 +563,7 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 
 		/* Process exclude list. */
 		for (pe = excludelist; pe; pe = pe->next) {
-			char *matchstart = n->name;
-			if (pe->pattern[0] == '/') {
-				matchstart = n->realname + realbase;
-			}
-
-			if (!fnmatch(pe->pattern, matchstart, FNM_PATHNAME|FNM_PERIOD)) {
-				freenode(n); break;
-			}
+			if (!nodematch(pe->pattern, n)) { freenode(n); break; }
 		}
 		if (pe) continue;
 
@@ -749,7 +749,8 @@ int main(int argc, char *argv[])
 			if (!alignlist)
 				alignlist = pa;
 			else {
-				for (pa2 = alignlist; pa2->next; pa2 = pa2->next) ;
+				for (pa2 = alignlist; pa2->next; pa2 = pa2->next)
+					;
 				pa2->next = pa;
 			}
 			break;
@@ -760,7 +761,8 @@ int main(int argc, char *argv[])
 			if (!excludelist)
 				excludelist = pe;
 			else {
-				for (pe2 = excludelist; pe2->next; pe2 = pe2->next) ;
+				for (pe2 = excludelist; pe2->next; pe2 = pe2->next)
+					;
 				pe2->next = pe;
 			}
 			break;
