@@ -13,6 +13,7 @@
  *	2 Jan 1997				Initial release
  *      6 Aug 1997				Second release
  *     11 Sep 1998				Alignment support
+ *     11 Jan 2001		special files of name @name,[cpub],major,minor
  */
 
 /*
@@ -56,17 +57,18 @@
  * Sorry about that.  Feel free to contact me if you have problems.
  */
 
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <fcntl.h>
+#include <stdio.h>	/* Userland pieces of the ANSI C standard I/O package  */
+#include <stdlib.h>	/* Userland prototypes of the ANSI C std lib functions */
+#include <string.h>	/* Userland prototypes of the string handling funcs    */
+#include <unistd.h>	/* Userland prototypes of the Unix std system calls    */
+#include <fcntl.h>	/* Flag value for file handling functions              */
+#include <time.h>
 #include <fnmatch.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <sys/sysmacros.h>
+#include <dirent.h>
+#include <sys/stat.h>
+
+#include <netinet/in.h>	/* Consts & structs defined by the internet system */
+#include <sys/sysmacros.h> /* System macros definition */
 
 #ifdef __GLIBC__
 typedef unsigned short umode_t;
@@ -99,6 +101,7 @@ struct romfh {
 struct filenode;
 
 struct filehdr {
+	struct filenode *owner;
 	struct filenode *head;
 	struct filenode *tail;
 	struct filenode *tailpred;
@@ -107,6 +110,7 @@ struct filehdr {
 struct filenode {
 	struct filenode *next;
 	struct filenode *prev;
+	struct filenode *parent;
 	struct filehdr dirlist;
 	struct filenode *orig_link;
 	char *name;
@@ -126,8 +130,14 @@ struct aligns {
 	char pattern[0];
 };
 
-void initlist(struct filehdr *fh)
+struct excludes {
+	struct excludes *next;
+	char pattern[0];
+};
+
+void initlist(struct filehdr *fh, struct filenode *owner)
 {
+	fh->owner = owner;
 	fh->head = (struct filenode *)&fh->tail;
 	fh->tail = NULL;
 	fh->tailpred = (struct filenode *)&fh->head;
@@ -154,6 +164,7 @@ void shownode(int level, struct filenode *node, FILE *f)
 	if (node->orig_link)
 		fprintf(f, " [link to 0x%-6x]", node->orig_link->offset);
 	fprintf(f, "\n");
+
 	p = node->dirlist.head;
 	while (p->next) {
 		shownode(level+1, p, f);
@@ -168,6 +179,7 @@ static char fixbuf[512];
 static int atoffs = 0;
 static int align = 16;
 struct aligns *alignlist = NULL;
+struct excludes *excludelist = NULL;
 int realbase;
 
 int findalign(struct filenode *node)
@@ -444,7 +456,8 @@ struct filenode *newnode(const char *base, const char *name, int curroffset)
 
 	node->realname = str;
 	node->next = node->prev = NULL;
-	initlist(&node->dirlist);
+	node->parent = NULL;
+	initlist(&node->dirlist, node);
 
 	node->ondev = -1;
 	node->onino = -1;
@@ -502,6 +515,7 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 	DIR *dirfd;
 	struct dirent *dp;
 	struct filenode *n, *link;
+	struct excludes *pe;
 
 	if (level <= 1) {
 		/* Ok, to make sure . and .. are handled correctly
@@ -512,8 +526,15 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 		if (!lstat(link->realname, sb)) {
 			setnode(link, sb->st_dev, sb->st_ino, sb->st_mode);
 			append(&dir->dirlist, link);
+
+			/* special case for root node - '..'s in subdirs should link to
+			 *   '.' of root node, not root node itself.
+			 */
+			dir->dirlist.owner = link;
+
 			curroffset = alignnode(link, curroffset, 0) + spaceneeded(link);
 			n = newnode(base, "..", curroffset);
+
 			if (!lstat(n->realname, sb)) {
 				setnode(n, sb->st_dev, sb->st_ino, sb->st_mode);
 				append(&dir->dirlist, n);
@@ -531,19 +552,93 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 		     || strcmp(dp->d_name, "..") == 0))
 			continue;
 		n = newnode(base, dp->d_name, curroffset);
+
+		/* Process exclude list. */
+		for (pe = excludelist; pe; pe = pe->next) {
+			char *matchstart = n->name;
+			if (pe->pattern[0] == '/') {
+				matchstart = n->realname + realbase;
+			}
+
+			if (!fnmatch(pe->pattern, matchstart, FNM_PATHNAME|FNM_PERIOD)) {
+				freenode(n); break;
+			}
+		}
+		if (pe) continue;
+
 		if (lstat(n->realname, sb)) {
 			fprintf(stderr, "ignoring '%s' (lstat failed)\n", n->realname);
 			freenode(n); continue;
 		}
+
+		/* Handle special names */
+		if ( n->name[0] == '@' ) {
+			if (S_ISLNK(sb->st_mode)) {
+				/* this is a link to follow at build time */
+				n->name = n->name + 1; /* strip off the leading @ */
+				memset(bigbuf, 0, sizeof(bigbuf));
+				readlink(n->realname, bigbuf, sizeof(bigbuf));
+				n->realname = strdup(bigbuf);
+
+				if (lstat(n->realname, sb)) {
+					fprintf(stderr, "ignoring '%s' (lstat failed)\n",
+						n->realname);
+					freenode(n); continue;
+				}
+			} else if (S_ISREG(sb->st_mode) && sb->st_size == 0) {
+				/*
+				 *        special file @name,[bcp..],major,minor
+				 */
+				char      devname[32];
+				char      type;
+				int       major;
+				int       minor;
+						
+				if (sscanf(n->name, "@%[a-zA-Z0-9],%c,%d,%d",
+					   devname, &type, &major, &minor) == 4 ) {
+					strcpy(n->name, devname);
+					sb->st_rdev = makedev(major, minor);
+					sb->st_mode &= ~S_IFMT;
+					switch (type) {
+					case 'c':
+					case 'u':
+						sb->st_mode |= S_IFCHR;
+						break;
+					case 'b':
+						sb->st_mode |= S_IFBLK;
+						break;
+					case 'p':
+						sb->st_mode |= S_IFIFO;
+						break;
+					default:
+						fprintf(stderr, "Invalid special device type '%c' "
+							"for file %s\n", type, n->realname);
+						freenode(n);
+						continue;
+					}
+				}
+			}
+		}
+
 		setnode(n, sb->st_dev, sb->st_ino, sb->st_mode);
 		/* Skip unreadable files/dirs */
 		if (!S_ISLNK(n->modes) && access(n->realname, R_OK)) {
 			fprintf(stderr, "ignoring '%s' (access failed)\n", n->realname);
 			freenode(n); continue;
 		}
+
 		/* Look up old links */
-		link = findnode(root, n->ondev, n->onino);
-		append(&dir->dirlist, n);
+		if ( strcmp(n->name, ".") == 0 ) {
+			append(&dir->dirlist, n);
+			link = n->parent;
+		} else if (strcmp(n->name, "..") == 0) {
+			append(&dir->dirlist, n);
+			link = n->parent->parent;
+		} else {
+			link = findnode(root, n->ondev, n->onino);
+			append(&dir->dirlist, n);
+		}
+
 		if (link) {
 			n->orig_link = link;
 			curroffset = alignnode(n, curroffset, 0) + spaceneeded(n);
@@ -561,8 +656,15 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 		if (S_ISCHR(sb->st_mode) || S_ISBLK(sb->st_mode)) {
 			n->devnode = sb->st_rdev;
 		}
+
 		if (S_ISDIR(sb->st_mode)) {
-			curroffset = processdir(level+1, n->realname, dp->d_name, sb, n, root, curroffset);
+			if (!strcmp(n->name, "..")) {
+				curroffset = processdir(level+1, dir->realname, dp->d_name,
+							sb, dir, root, curroffset);
+			} else {
+				curroffset = processdir(level+1, n->realname, dp->d_name,
+							sb, n, root, curroffset);
+			}
 		}
 	}
 	closedir(dirfd);
@@ -571,6 +673,7 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 
 void showhelp(const char *argv0)
 {
+	printf("genromfs 0.3.3\n");
 	printf("Usage: %s [OPTIONS] -f IMAGE\n",argv0);
 	printf("Create a romfs filesystem image from a directory\n");
 	printf("\n");
@@ -579,7 +682,8 @@ void showhelp(const char *argv0)
 	printf("  -v                     (Too) verbose operation\n");
 	printf("  -V VOLUME              Use the specified volume name\n");
 	printf("  -a ALIGN               Align regular file data to ALIGN bytes\n");
-	printf("  -A ALIGN,PATTERN	 Align all objects matching pattern to at least ALIGN bytes\n");
+	printf("  -A ALIGN,PATTERN       Align all objects matching pattern to at least ALIGN bytes\n");
+	printf("  -x PATTERN             Exclude all objects matching pattern\n");
 	printf("  -h                     Show this help\n");
 	printf("\n");
 	printf("Report bugs to chexum@shadow.banki.hu\n");
@@ -599,9 +703,10 @@ int main(int argc, char *argv[])
 	int i;
 	char *p;
 	struct aligns *pa, *pa2;
+	struct excludes *pe, *pe2;
 	FILE *f;
 
-	while ((c = getopt(argc, argv, "V:vd:f:ha:A:")) != EOF) {
+	while ((c = getopt(argc, argv, "V:vd:f:ha:A:x:")) != EOF) {
 		switch(c) {
 		case 'd':
 			dir = optarg;
@@ -635,6 +740,7 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "-A takes N,PATTERN format of argument, where N is a number\n");
 				exit(1);
 			}
+			/* strlen(p+1) + 1 eq strlen(p) */
 			pa = (struct aligns *)malloc(sizeof(*pa) + strlen(p));
 			pa->align = i;
 			pa->next = NULL;
@@ -642,8 +748,19 @@ int main(int argc, char *argv[])
 			if (!alignlist)
 				alignlist = pa;
 			else {
-				for (pa2 = alignlist; pa2->next; pa2 = pa2->next);
+				for (pa2 = alignlist; pa2->next; pa2 = pa2->next) ;
 				pa2->next = pa;
+			}
+			break;
+		case 'x':
+			pe = (struct excludes *)malloc(sizeof(*pe) + strlen(optarg) + 1);
+			pe->next = NULL;
+			strcpy(pe->pattern, optarg);
+			if (!excludelist)
+				excludelist = pe;
+			else {
+				for (pe2 = excludelist; pe2->next; pe2 = pe2->next) ;
+				pe2->next = pe;
 			}
 			break;
 		default:
@@ -672,6 +789,7 @@ int main(int argc, char *argv[])
 	
 	realbase = strlen(dir);
 	root = newnode(dir, volname, 0);
+	root->parent = root;
 	lastoff = processdir (1, dir, dir, &sb, root, root, spaceneeded(root));
 	if (verbose)
 		shownode(0, root, stderr);

@@ -17,6 +17,9 @@ genromfs \- create a romfs image
 .B \-A alignment,pattern
 ]
 [
+.B \-x pattern
+]
+[
 .B \-v
 ]
 .SH DESCRIPTION
@@ -61,6 +64,10 @@ slashes, in which case files matching those patterns are matched in all
 directories, or start with a leading slash, in which case they are matched
 against absolute paths inside of the romfs filesystem (that is, as if you
 chrooted into the rom filesystem).
+.TP
+.BI -x \ pattern
+Allow to exclude files that match a pattern.
+It's useful to exclude CVS directories and backup files (ending in a '~').
 .TP
 .BI -v
 Verbose operation,
