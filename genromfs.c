@@ -69,7 +69,12 @@
 #include <sys/types.h>
 
 #include <netinet/in.h>	/* Consts & structs defined by the internet system */
-#include <sys/sysmacros.h> /* System macros definition */
+
+/* good old times without autoconf... */
+#if defined(linux) || defined(sun)
+#include <sys/sysmacros.h>
+#endif
+
 
 struct romfh {
 	int32_t nextfh;

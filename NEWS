@@ -1,7 +1,7 @@
-Changes since release 0.3:
+Changes in release 0.5:
 
+* genromfs builds on Linux (libc5, glibc), FreeBSD, Solaris, with gcc
 * added a script to generate device special files
-
 * merged in the uClinux changes, thanks to:
   Greg Ungerer (gerg -at- snapgear.com)
   The LEOX team (lpm/bdl/bronche -at- leox.org)
@@ -9,9 +9,7 @@ Changes since release 0.3:
 ** allow specifying device files by names @dev,b,major,minor
 ** -x option to exclude files
 ** portability fixes to compile on Solaris
-
 * print version
-
 * spelling fixes
 
 Changes in release 0.3:

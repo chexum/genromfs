@@ -20,7 +20,7 @@ bindir = $(prefix)/bin
 mandir = $(prefix)/man
 
 genromfs: genromfs.o
-	$(CC) $(LDFLAGS) $< -o $@
+	$(CC) $(LDFLAGS) genromfs.o -o genromfs
 
 .c.o:
 	$(CC) $(CFLAGS) $< -c -o $@
