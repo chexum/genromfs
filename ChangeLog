@@ -1,3 +1,8 @@
+2002-03-05 09:58  Janos Farkas  <chexum@shadow.banki.hu>
+
+	* genromfs.c: Cygwin needs to include sys/sysmacros.h,
+	Thanks to Arthur Shipkowski.
+
 2002-01-23 11:32  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* Makefile: update version; check for correct release on dist.

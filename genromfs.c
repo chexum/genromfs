@@ -71,7 +71,7 @@
 #include <netinet/in.h>	/* Consts & structs defined by the internet system */
 
 /* good old times without autoconf... */
-#if defined(linux) || defined(sun)
+#if defined(__linux__) || defined(__sun__) || defined(__CYGWIN__)
 #include <sys/sysmacros.h>
 #endif
 
