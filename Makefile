@@ -49,9 +49,9 @@ install-bin:
 	install -m 755 genromfs $(PREFIX)$(bindir)/
 
 install-man:
-	mkdir -p $(PREFIX)$(mandir)
-	if [ -f $(PREFIX)$(bindir)/man8 ]; then \
-	rm -f $(PREFIX)$(bindir)/man8; \
+	if [ -f $(PREFIX)$(mandir)/man8 ]; then \
+		rm -f $(PREFIX)$(mandir)/man8; \
 	fi
+	mkdir -p $(PREFIX)$(mandir)/man8
 	install -m 644 genromfs.8 $(PREFIX)$(mandir)/man8/
 
