@@ -2,10 +2,6 @@
 
 	* Makefile: add prefix/bindir/mandir to ease relocated build.
 
-2002-01-20 09:40  Janos Farkas  <chexum@shadow.banki.hu>
-
-	* genromfs.c: [main()] use int c.
-
 2002-01-20 09:36  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* genromfs.c: include sys/types.h, and use int32_t, clear up
@@ -34,6 +30,11 @@
 
 		* filename device insertion (davidm@lineo.com)
 
+Tue Feb 8 09:52:51 2000 Pavel Roskin <pavel_roskin@geocities.com>
+
+	* genromfs.c (main): don't rely on char being signed when parsing
+	the arguments
+	
 Mon Sep 21 16:35:33 1998  Jakub Jelinek  <jj@ultra.linux.cz>
 
 	* genromfs.c: add support for `-a' and `-A'.
