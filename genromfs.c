@@ -10,6 +10,7 @@
  *
  * Changes:
  *	2 Jan 1997				Initial release
+ *      6 Aug 1997				Second release
  */
 
 /*
@@ -500,6 +501,19 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 	return curroffset;
 }
 
+void showhelp(const char *argv0)
+{
+	printf("Usage: %s [OPTIONS] -f IMAGE\n",argv0);
+	printf("Create a romfs filesystem image from a directory\n");
+	printf("\n");
+	printf("  -f IMAGE               Output the image into this file\n");
+	printf("  -d DIRECTORY           Use this directory as source\n");
+	printf("  -v                     (Too) verbose operation\n");
+	printf("  -V VOLUME              Use the specified volume name\n");
+	printf("  -h                     Show this help\n");
+	printf("\n");
+	printf("Report bugs to chexum@shadow.banki.hu\n");
+}
 
 int main(int argc, char *argv[])
 {
@@ -514,7 +528,7 @@ int main(int argc, char *argv[])
 	int lastoff;
 	FILE *f;
 
-	while ((c = getopt(argc, argv, "V:vd:f:")) != EOF) {
+	while ((c = getopt(argc, argv, "V:vd:f:h")) != EOF) {
 		switch(c) {
 		case 'd':
 			dir = optarg;
@@ -528,6 +542,9 @@ int main(int argc, char *argv[])
 		case 'v':
 			verbose = 1;
 			break;
+		case 'h':
+			showhelp(argv[0]);
+			exit(0);
 		default:
 			exit(1);
 		}
@@ -538,7 +555,8 @@ int main(int argc, char *argv[])
 		volname = buf;
 	}
 	if (!outf) {
-		fprintf(stderr, "Please specify destination file via -f\n");
+		fprintf(stderr, "%s: you must specify the destination file\n", argv[0]);
+		fprintf(stderr, "Try `%s -h' for more information\n",argv[0]);
 		exit(1);
 	}
 	if (strcmp(outf, "-") == 0) {
