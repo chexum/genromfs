@@ -673,7 +673,7 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 
 void showhelp(const char *argv0)
 {
-	printf("genromfs 0.3.3\n");
+	printf("genromfs %s\n",VERSION);
 	printf("Usage: %s [OPTIONS] -f IMAGE\n",argv0);
 	printf("Create a romfs filesystem image from a directory\n");
 	printf("\n");
