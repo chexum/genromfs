@@ -1,3 +1,19 @@
+2002-01-18 11:22  Janos Farkas  <chexum@shadow.banki.hu>
+
+	* imported from http://www.uclinux.org/pub/uClinux/utilities/
+	  without the indent changes (sorry)
+
+	* Fri Aug 17 23:21:00 2001  Greg Ungerer (gerg@lineo.com)
+
+		* incorporated patches from many uClinux users
+
+		* fixed @ device link problem (profesor@sidehack.sat.gweep.net)
+		  addition of -x option to skip files
+
+		* compilation on Solaris (The LEOX team <lpm@leox.org> )
+
+		* filename device insertion (davidm@lineo.com)
+
 Mon Sep 21 16:35:33 1998  Jakub Jelinek  <jj@ultra.linux.cz>
 
 	* genromfs.c: add support for `-a' and `-A'.
