@@ -214,12 +214,13 @@ int findalign(struct filenode *node)
 
 int romfs_checksum(void *data, int size)
 {
-        int32_t sum, *ptr;
+        int32_t sum, word, *ptr;
 
         sum = 0; ptr = data;
         size>>=2;
         while (size>0) {
-                sum += ntohl(*ptr++);
+                word = *ptr++;
+                sum += ntohl(word);
                 size--;
         }
         return sum;
@@ -557,7 +558,10 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 	}
 
 	dirfd = opendir(dir->realname);
-	while((dp = readdir(dirfd))) {
+	if (dirfd == NULL) {
+		perror(dir->realname);
+	}
+	while(dirfd && (dp = readdir(dirfd))) {
 		/* don't process main . and .. twice */
 		if (level <= 1 &&
 		    (strcmp(dp->d_name, ".") == 0
@@ -672,7 +676,7 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 			}
 		}
 	}
-	closedir(dirfd);
+	if (dirfd) closedir(dirfd);
 	return curroffset;
 }
 
