@@ -1,3 +1,8 @@
+2002-01-22 09:54  Janos Farkas  <chexum@shadow.banki.hu>
+
+	* Makefile: remove mis-installed man-page first.
+	Also fix directories to not use //.
+
 2002-01-22 08:37  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* genromfs.8: document special @files, clarify wording of some

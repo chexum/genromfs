@@ -43,10 +43,13 @@ dist:
 install: all install-bin install-man
 
 install-bin:
-	mkdir -p $(PREFIX)/$(bindir)
-	install -m 755 genromfs $(PREFIX)/$(bindir)
+	mkdir -p $(PREFIX)$(bindir)
+	install -m 755 genromfs $(PREFIX)$(bindir)/
 
 install-man:
-	mkdir -p $(PREFIX)/$(mandir)
-	install -m 644 genromfs.8 $(PREFIX)/$(mandir)/man8
+	mkdir -p $(PREFIX)$(mandir)
+	if [ -f $(PREFIX)$(bindir)/man8 ]; then \
+	rm -f $(PREFIX)$(bindir)/man8; \
+	fi
+	install -m 644 genromfs.8 $(PREFIX)$(mandir)/man8/
 
