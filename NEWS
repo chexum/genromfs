@@ -1,0 +1,10 @@
+Changes since release 0.3:
+
+* merged in the uClinux changes, thanks to Greg Ungerer
+** -x option to exclude files
+** portability fixes to compile on Solaris
+** allow specifying device files by names @dev,b,major,minor
+* print version
+* spelling fixes
+
+Changes in release 0.3:
