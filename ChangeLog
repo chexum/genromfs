@@ -1,3 +1,8 @@
+2002-01-22 08:37  Janos Farkas  <chexum@shadow.banki.hu>
+
+	* genromfs.8: document special @files, clarify wording of some
+	other options, and update version/date.
+
 2002-01-21 10:37  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* Makefile: install man page in man-dir. oops.
