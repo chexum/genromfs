@@ -49,8 +49,10 @@ install-bin:
 	install -m 755 genromfs $(PREFIX)$(bindir)/
 
 install-man:
-	if [ -f $(PREFIX)$(mandir)/man8 ]; then \
-		rm -f $(PREFIX)$(mandir)/man8; \
+	# genromfs 0.5 installed the man page in this file,
+	# remove it before someone notices :)
+	if [ -f $(PREFIX)$(bindir)/man8 ]; then \
+		rm -f $(PREFIX)$(bindir)/man8; \
 	fi
 	mkdir -p $(PREFIX)$(mandir)/man8
 	install -m 644 genromfs.8 $(PREFIX)$(mandir)/man8/
