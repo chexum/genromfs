@@ -1,10 +1,17 @@
 Changes since release 0.3:
 
-* merged in the uClinux changes, thanks to Greg Ungerer
+* added a script to generate device special files
+
+* merged in the uClinux changes, thanks to:
+  Greg Ungerer (gerg -at- snapgear.com)
+  The LEOX team (lpm/bdl/bronche -at- leox.org)
+  profesor -at- sidehack.sat.gweep.net
+** allow specifying device files by names @dev,b,major,minor
 ** -x option to exclude files
 ** portability fixes to compile on Solaris
-** allow specifying device files by names @dev,b,major,minor
+
 * print version
+
 * spelling fixes
 
 Changes in release 0.3:

@@ -1,3 +1,8 @@
+2002-01-20 10:57  Janos Farkas  <chexum@shadow.banki.hu>
+
+	* genrommkdev: a sample script to generate special nodes from a
+	device list file.
+
 2002-01-20 10:29  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* genromfs.c: use O_BINARY, and "wb" if possible to ease porting.
