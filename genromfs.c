@@ -311,7 +311,7 @@ void dumpnode(struct filenode *node, FILE *f)
 	if (node->pad)
 		dumpzero(node->pad, f);
 	if (node->next && node->next->next)
-		ri.nextfh = ntohl(node->next->offset);
+		ri.nextfh = htonl(node->next->offset);
 	if ((node->modes & 0111) &&
 	    (S_ISDIR(node->modes) || S_ISREG(node->modes)))
 		ri.nextfh |= htonl(ROMFH_EXEC);
