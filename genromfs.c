@@ -101,15 +101,19 @@ struct romfh {
 struct filenode;
 
 struct filehdr {
-	struct filenode *owner;
+	/* leave h, t, tp at front, this is a linked list header */
 	struct filenode *head;
 	struct filenode *tail;
 	struct filenode *tailpred;
+	/* end fragile header */
+	struct filenode *owner;
 };
 
 struct filenode {
+	/* leave n, p at front, this is a linked list item */
 	struct filenode *next;
 	struct filenode *prev;
+	/* end fragile header */
 	struct filenode *parent;
 	struct filehdr dirlist;
 	struct filenode *orig_link;
@@ -125,8 +129,8 @@ struct filenode {
 };
 
 struct aligns {
-	int align;
 	struct aligns *next;
+	int align;
 	char pattern[0];
 };
 
@@ -137,10 +141,10 @@ struct excludes {
 
 void initlist(struct filehdr *fh, struct filenode *owner)
 {
-	fh->owner = owner;
 	fh->head = (struct filenode *)&fh->tail;
 	fh->tail = NULL;
 	fh->tailpred = (struct filenode *)&fh->head;
+	fh->owner = owner;
 }
 
 int listisempty(struct filehdr *fh)
