@@ -1,8 +1,11 @@
 
 # Makefile for the genromfs program.
 
+all: genromfs
+
 PACKAGE = genromfs
-VERSION = 0.5
+VERSION = 0.5pre
+CC = gcc
 CFLAGS = -O2 -Wall -DVERSION=\"$(VERSION)\"#-g#
 LDFLAGS = -s#-g
 
@@ -16,9 +19,11 @@ prefix = /usr
 bindir = $(prefix)/bin
 mandir = $(prefix)/man
 
-all: genromfs
-
 genromfs: genromfs.o
+	$(CC) $(LDFLAGS) $< -o $@
+
+.c.o:
+	$(CC) $(CFLAGS) $< -c -o $@
 
 clean:
 	rm -f genromfs *.o
