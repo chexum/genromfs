@@ -66,15 +66,16 @@
 #include <fnmatch.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <netinet/in.h>	/* Consts & structs defined by the internet system */
 #include <sys/sysmacros.h> /* System macros definition */
 
 struct romfh {
-	int nextfh;
-	int spec;
-	int size;
-	int checksum;
+	int32_t nextfh;
+	int32_t spec;
+	int32_t size;
+	int32_t checksum;
 };
 
 #define ROMFS_MAXFN 128
@@ -213,7 +214,8 @@ int romfs_checksum(void *data, int size)
         sum = 0; ptr = data;
         size>>=2;
         while (size>0) {
-                sum += htonl(*ptr++);
+		/* big-endian to host-endian */
+                sum += ntohl(*ptr++);
                 size--;
         }
         return sum;
@@ -222,7 +224,8 @@ int romfs_checksum(void *data, int size)
 void fixsum(struct romfh *ri, int size)
 {
 	ri->checksum = 0;
-	ri->checksum = ntohl(-romfs_checksum(ri, size));
+	/* host-endian to big-endian */
+	ri->checksum = htonl(-romfs_checksum(ri, size));
 }
 
 void dumpdata(void *addr, int len, FILE *f)
@@ -313,31 +316,31 @@ void dumpnode(struct filenode *node, FILE *f)
 		ri.nextfh = ntohl(node->next->offset);
 	if ((node->modes & 0111) &&
 	    (S_ISDIR(node->modes) || S_ISREG(node->modes)))
-		ri.nextfh |= ntohl(ROMFH_EXEC);
+		ri.nextfh |= htonl(ROMFH_EXEC);
 
 	if (node->orig_link) {
-		ri.nextfh |= ntohl(ROMFH_HRD);
+		ri.nextfh |= htonl(ROMFH_HRD);
 		/* Don't allow hardlinks to convey attributes */
-		ri.nextfh &= ~ntohl(ROMFH_EXEC);
-		ri.spec = ntohl(node->orig_link->offset);
+		ri.nextfh &= ~htonl(ROMFH_EXEC);
+		ri.spec = htonl(node->orig_link->offset);
 		dumpri(&ri, node, f);
 	} else if (S_ISDIR(node->modes)) {
-		ri.nextfh |= ntohl(ROMFH_DIR);
+		ri.nextfh |= htonl(ROMFH_DIR);
 		if (listisempty(&node->dirlist)) {
-			ri.spec = ntohl(node->offset);
+			ri.spec = htonl(node->offset);
 		} else {
-			ri.spec = ntohl(node->dirlist.head->offset);
+			ri.spec = htonl(node->dirlist.head->offset);
 		}
 		dumpri(&ri, node, f);
 	} else if (S_ISLNK(node->modes)) {
-		ri.nextfh |= ntohl(ROMFH_LNK);
+		ri.nextfh |= htonl(ROMFH_LNK);
 		dumpri(&ri, node, f);
 		memset(bigbuf, 0, sizeof(bigbuf));
 		readlink(node->realname, bigbuf, node->size);
 		dumpdataa(bigbuf, node->size, f);
 	} else if (S_ISREG(node->modes)) {
 		int offset, len, fd, max, avail;
-		ri.nextfh |= ntohl(ROMFH_REG);
+		ri.nextfh |= htonl(ROMFH_REG);
 		dumpri(&ri, node, f);
 		offset = 0;
 		max = node->size;
@@ -362,18 +365,18 @@ void dumpnode(struct filenode *node, FILE *f)
 			offset+=avail;
 		}
 	} else if (S_ISCHR(node->modes)) {
-		ri.nextfh |= ntohl(ROMFH_CHR);
-		ri.spec = ntohl(major(node->devnode)<<16|minor(node->devnode));
+		ri.nextfh |= htonl(ROMFH_CHR);
+		ri.spec = htonl(major(node->devnode)<<16|minor(node->devnode));
 		dumpri(&ri, node, f);
 	} else if (S_ISBLK(node->modes)) {
-		ri.nextfh |= ntohl(ROMFH_BLK);
-		ri.spec = ntohl(major(node->devnode)<<16|minor(node->devnode));
+		ri.nextfh |= htonl(ROMFH_BLK);
+		ri.spec = htonl(major(node->devnode)<<16|minor(node->devnode));
 		dumpri(&ri, node, f);
 	} else if (S_ISFIFO(node->modes)) {
-		ri.nextfh |= ntohl(ROMFH_FIF);
+		ri.nextfh |= htonl(ROMFH_FIF);
 		dumpri(&ri, node, f);
 	} else if (S_ISSOCK(node->modes)) {
-		ri.nextfh |= ntohl(ROMFH_SCK);
+		ri.nextfh |= htonl(ROMFH_SCK);
 		dumpri(&ri, node, f);
 	}
 
