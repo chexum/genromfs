@@ -4,7 +4,7 @@
 all: genromfs
 
 PACKAGE = genromfs
-VERSION = 0.5.1
+VERSION = 0.5.2
 CC = gcc
 CFLAGS = -O2 -Wall -DVERSION=\"$(VERSION)\"#-g#
 LDFLAGS = -s#-g
@@ -32,12 +32,13 @@ distclean: clean
 	rm -rf $(DISTDIR) $(DISTDIR).tar.gz
 
 dist:
+	./checkdist $(VERSION)
 	rm -rf $(DISTDIR).tar.gz $(DISTDIR); \
 	mkdir $(DISTDIR); \
 	for i in $(FILES); do \
 		cp $$i $(DISTDIR)/; \
 	done; \
-	tar --owner=root --group=root -zcvf $(DISTDIR).tar.gz $(DISTDIR); \
+	tar --owner=root --group=root -zcf $(DISTDIR).tar.gz $(DISTDIR); \
 	rm -rf $(DISTDIR)
 
 install: all install-bin install-man

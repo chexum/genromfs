@@ -1,3 +1,8 @@
+2002-01-23 11:32  Janos Farkas  <chexum@shadow.banki.hu>
+
+	* Makefile: update version; check for correct release on dist.
+	* checkdist: new file to check for misversioned dists.
+
 2002-01-22 10:00  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* NEWS: update version, release 0.5.1.
