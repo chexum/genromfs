@@ -603,7 +603,7 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 				int       major;
 				int       minor;
 						
-				if (sscanf(n->name, "@%[-a-zA-Z0-9_+],%c,%d,%d",
+				if (sscanf(n->name, "@%[a-zA-Z0-9_+-],%c,%d,%d",
 					   devname, &type, &major, &minor) == 4 ) {
 					strcpy(n->name, devname);
 					sb->st_rdev = makedev(major, minor);
