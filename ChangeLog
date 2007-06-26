@@ -1,3 +1,6 @@
+2007-06-26 19:04  Janos Farkas  <chexum+dev () gmail.com>
+	* NEWS, genromfs.8, genromfs.lsm: releasing 0.5.2.
+
 2002-04-30 15:09  Janos Farkas  <chexum@shadow.banki.hu>
 
 	* genromfs.c: romfs_checksum(); avoid potential side effects of an

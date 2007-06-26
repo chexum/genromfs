@@ -1,6 +1,11 @@
-Changes since release 0.5.1:
+Changes in release 0.5.2:
 
-* distribution is now checked for correct version
+* faked device names may contain the special characters "-" "_" and "+"
+  Thanks to Greg Ungerer
+* code changes -- avoid possible side effects of ntohl(), and report
+  nonexistant directories instead of a segfault
+  Thanks to Ilguiz Latypov
+* version numbers are checked at make distcheck time
 
 Changes in release 0.5.1:
 
