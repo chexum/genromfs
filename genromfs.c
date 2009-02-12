@@ -124,9 +124,12 @@ struct filenode {
 	unsigned int pad;
 };
 
-struct aligns {
-	struct aligns *next;
-	int align;
+#define EXTTYPE_UNKNOWN 0
+#define EXTTYPE_ALIGNMENT 1
+struct extmatches {
+	struct extmatches *next;
+	int exttype;
+	int num;
 	char pattern[0];
 };
 
@@ -182,7 +185,7 @@ static char bigbuf[4096];
 static char fixbuf[512];
 static int atoffs = 0;
 static int align = 16;
-struct aligns *alignlist = NULL;
+struct extmatches *patterns = NULL;
 struct excludes *excludelist = NULL;
 int realbase;
 
@@ -202,15 +205,15 @@ int nodematch(char *pattern, struct filenode *node)
 
 int findalign(struct filenode *node)
 {
-	struct aligns *pa;
+	struct extmatches *pa;
 	int i;
 
 	if (!S_ISREG(node->modes)) return 16;
 
 	i = align;
 
-	for (pa = alignlist; pa; pa = pa->next) {
-		if (!nodematch(pa->pattern,node)) i = pa->align;
+	for (pa = patterns; pa; pa = pa->next) {
+		if ((pa->exttype == EXTTYPE_ALIGNMENT) && !nodematch(pa->pattern,node)) i = pa->num;
 	}
 	return i;
 }
@@ -714,7 +717,7 @@ int main(int argc, char *argv[])
 	int lastoff;
 	int i;
 	char *p;
-	struct aligns *pa, *pa2;
+	struct extmatches *pa, *pa2;
 	struct excludes *pe, *pe2;
 	FILE *f;
 
@@ -753,14 +756,15 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 			/* strlen(p+1) + 1 eq strlen(p) */
-			pa = (struct aligns *)malloc(sizeof(*pa) + strlen(p));
-			pa->align = i;
+			pa = (struct extmatches *)malloc(sizeof(*pa) + strlen(p));
+			pa->exttype = EXTTYPE_ALIGNMENT;
+			pa->num = i;
 			pa->next = NULL;
 			strcpy(pa->pattern, p + 1);
-			if (!alignlist)
-				alignlist = pa;
+			if (!patterns)
+				patterns = pa;
 			else {
-				for (pa2 = alignlist; pa2->next; pa2 = pa2->next)
+				for (pa2 = patterns; pa2->next; pa2 = pa2->next)
 					;
 				pa2->next = pa;
 			}
