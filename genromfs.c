@@ -715,7 +715,7 @@ int main(int argc, char *argv[])
 	struct filenode *root;
 	struct stat sb;
 	int lastoff;
-	int i;
+	unsigned int i;
 	char *p;
 	struct extmatches *pa, *pa2;
 	struct excludes *pe, *pe2;
@@ -739,19 +739,20 @@ int main(int argc, char *argv[])
 			showhelp(argv[0]);
 			exit(0);
 		case 'a':
-			align = strtoul(optarg, NULL, 0);
-			if (align < 16 || (align & (align - 1))) {
-				fprintf(stderr, "Align has to be at least 16 bytes and a power of two\n");
-				exit(1);
-			}
-			break;
 		case 'A':
 			i = strtoul(optarg, &p, 0);
 			if (i < 16 || (i & (i - 1))) {
-				fprintf(stderr, "Align has to be at least 16 bytes and a power of two\n");
+				fprintf(stderr, "Alignment has to be at least 16 bytes and a power of two\n");
 				exit(1);
 			}
-			if (*p != ',' || !p[1]) {
+			if (c == 'a') {
+				if (p[0] != 0) {
+					fprintf(stderr, "-a must only be given a number\n");
+					exit(1);
+				}
+				p=",";
+			}
+			if (*p != ',') {
 				fprintf(stderr, "-A takes N,PATTERN format of argument, where N is a number\n");
 				exit(1);
 			}
