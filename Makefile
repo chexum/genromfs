@@ -42,6 +42,9 @@ dist:
 	tar --owner=root --group=root -zcf $(DISTDIR).tar.gz $(DISTDIR);
 	rm -rf $(DISTDIR)
 
+check:	selftest
+	$(SHELL) -c "cd selftest; bash test.sh"
+
 install: all install-bin install-man
 
 install-bin:
