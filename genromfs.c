@@ -702,7 +702,7 @@ void showhelp(const char *argv0)
 	printf("  -x PATTERN             Exclude all objects matching pattern\n");
 	printf("  -h                     Show this help\n");
 	printf("\n");
-	printf("Report bugs to chexum@shadow.banki.hu\n");
+	printf("To report bugs check http://romfs.sf.net/\n");
 }
 
 int main(int argc, char *argv[])
