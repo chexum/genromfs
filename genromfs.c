@@ -122,6 +122,8 @@ struct filenode {
 	unsigned int offset;
 	unsigned int size;
 	unsigned int pad;
+	int exclude;
+	unsigned int align;
 };
 
 #define EXTTYPE_UNKNOWN 0
@@ -180,9 +182,10 @@ void shownode(int level, struct filenode *node, FILE *f)
 static char bigbuf[4096];
 static char fixbuf[512];
 static int atoffs = 0;
-static int align = 16;
 struct extmatches *patterns = NULL;
 int realbase;
+
+#define DEFALIGN 16
 
 /* helper function to match an exclusion or align pattern */
 
@@ -198,21 +201,23 @@ int nodematch(char *pattern, struct filenode *node)
 	return fnmatch(pattern,start,FNM_PATHNAME|FNM_PERIOD);
 }
 
-int findalign(struct filenode *node)
+void addpattern(int type,int num,char *s)
 {
-	struct extmatches *pa;
-	int i;
+	struct extmatches *pa, *pa2;
+	pa = (struct extmatches *)malloc(sizeof(*pa) + strlen(s) + 1);
+	pa->exttype = type;
+	pa->num = num;
+	pa->next = NULL;
+	strcpy (pa->pattern,s);
 
-	if (!S_ISREG(node->modes)) return 16;
-
-	i = align;
-
-	for (pa = patterns; pa; pa = pa->next) {
-		if ((pa->exttype == EXTTYPE_ALIGNMENT) && !nodematch(pa->pattern,node)) i = pa->num;
+	if (!patterns) { patterns = pa; }
+	else {
+		for (pa2 = patterns; pa2->next; pa2 = pa2->next) {
+			;
+		}
+		pa2->next = pa;
 	}
-	return i;
 }
-
 int romfs_checksum(void *data, int size)
 {
         int32_t sum, word, *ptr;
@@ -441,6 +446,7 @@ struct filenode *newnode(const char *base, const char *name, int curroffset)
 		fprintf(stderr,"out of memory\n");
 		exit(1);
 	}
+	memset(node,0,sizeof(*node));
 
 	len = strlen(name);
 	str = malloc(len+1);
@@ -469,18 +475,13 @@ struct filenode *newnode(const char *base, const char *name, int curroffset)
 	}
 
 	node->realname = str;
-	node->next = node->prev = NULL;
-	node->parent = NULL;
 	initlist(&node->dirlist, node);
 
 	node->ondev = -1;
 	node->onino = -1;
 	node->modes = -1;
-	node->size = 0;
-	node->devnode = 0;
-	node->orig_link = NULL;
 	node->offset = curroffset;
-	node->pad = 0;
+	node->align = DEFALIGN;
 
 	return node;
 }
@@ -511,7 +512,9 @@ int spaceneeded(struct filenode *node)
 
 int alignnode(struct filenode *node, int curroffset, int extraspace)
 {
-	int align = findalign(node), d;
+	int d;
+	unsigned int align = DEFALIGN;
+	if (S_ISREG(node->modes)) align = node->align;
 
 	d = ((curroffset + extraspace) & (align - 1));
 	if (d) {
@@ -570,11 +573,14 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 			continue;
 		n = newnode(base, dp->d_name, curroffset);
 
-		/* Process exclude list. */
+		/* Process exclude/align list. */
 		for (pa = patterns; pa; pa = pa->next) {
-			if (pa->exttype == EXTTYPE_EXCLUDE && !nodematch(pa->pattern, n)) { freenode(n); break; }
+			if (!nodematch(pa->pattern, n)) {
+				if (pa->exttype == EXTTYPE_EXCLUDE) { n->exclude = pa->num; }
+				if (pa->exttype == EXTTYPE_ALIGNMENT) { n->align = pa->num; }
+			}
 		}
-		if (pa) continue;
+		if (n->exclude) { freenode(n); continue; }
 
 		if (lstat(n->realname, sb)) {
 			fprintf(stderr, "ignoring '%s' (lstat failed)\n", n->realname);
@@ -712,7 +718,6 @@ int main(int argc, char *argv[])
 	int lastoff;
 	unsigned int i;
 	char *p;
-	struct extmatches *pa, *pa2;
 	FILE *f;
 
 	while ((c = getopt(argc, argv, "V:vd:f:ha:A:x:")) != EOF) {
@@ -751,31 +756,10 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 			/* strlen(p+1) + 1 eq strlen(p) */
-			pa = (struct extmatches *)malloc(sizeof(*pa) + strlen(p));
-			pa->exttype = EXTTYPE_ALIGNMENT;
-			pa->num = i;
-			pa->next = NULL;
-			strcpy(pa->pattern, p + 1);
-			if (!patterns)
-				patterns = pa;
-			else {
-				for (pa2 = patterns; pa2->next; pa2 = pa2->next)
-					;
-				pa2->next = pa;
-			}
+			addpattern(EXTTYPE_ALIGNMENT,i,p+1);
 			break;
 		case 'x':
-			pa = (struct extmatches *)malloc(sizeof(*pa) + strlen(optarg) + 1);
-			pa->exttype = EXTTYPE_EXCLUDE;
-			pa->next = NULL;
-			strcpy(pa->pattern, optarg);
-			if (!patterns)
-				patterns = pa;
-			else {
-				for (pa2 = patterns; pa2->next; pa2 = pa2->next)
-					;
-				pa2->next = pa;
-			}
+			addpattern(EXTTYPE_EXCLUDE,1,optarg);
 			break;
 		default:
 			exit(1);
