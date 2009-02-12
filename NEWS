@@ -1,3 +1,7 @@
+Changes since release 0.5.2:
+* It is now possible to override alignment with a smaller value:
+  genromfs -A2048,*.boot -A1024,m68k.boot -A512,m68k.boot
+
 Changes in release 0.5.2:
 
 * faked device names may contain the special characters "-" "_" and "+"

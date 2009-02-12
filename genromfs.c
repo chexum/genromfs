@@ -204,14 +204,13 @@ int findalign(struct filenode *node)
 {
 	struct aligns *pa;
 	int i;
-	
-	if (S_ISREG(node->modes)) i = align;
-	else i = 16;
+
+	if (!S_ISREG(node->modes)) return 16;
+
+	i = align;
 
 	for (pa = alignlist; pa; pa = pa->next) {
-		if (pa->align > i) {
-			if (!nodematch(pa->pattern,node)) i = pa->align;
-		}
+		if (!nodematch(pa->pattern,node)) i = pa->align;
 	}
 	return i;
 }
