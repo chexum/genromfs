@@ -14,7 +14,8 @@ DISTDIR = $(PACKAGE)-$(VERSION)
 FILES = COPYING NEWS ChangeLog Makefile \
  genromfs.8 genromfs.c genromfs.lsm \
  readme-kernel-patch genrommkdev romfs.txt \
- checkdist
+ checkdist \
+ .gitignore selftest
 
 prefix = /usr
 bindir = $(prefix)/bin
@@ -37,7 +38,7 @@ dist:
 	rm -rf $(DISTDIR).tar.gz $(DISTDIR)
 	mkdir $(DISTDIR);
 	for i in $(FILES); do \
-		cp $$i $(DISTDIR)/; \
+		cp -r $$i $(DISTDIR)/; \
 	done; \
 	tar --owner=root --group=root -zcf $(DISTDIR).tar.gz $(DISTDIR);
 	rm -rf $(DISTDIR)
