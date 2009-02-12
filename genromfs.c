@@ -191,6 +191,10 @@ int realbase;
 int nodematch(char *pattern, struct filenode *node)
 {
 	char *start = node->name;
+
+	/* empty means all */
+	if (pattern[0] == 0) return 0;
+
 	/* XXX: ugly realbase is global */
 	if (pattern[0] == '/') start = node->realname + realbase;
 	return fnmatch(pattern,start,FNM_PATHNAME|FNM_PERIOD);
