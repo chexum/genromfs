@@ -126,15 +126,11 @@ struct filenode {
 
 #define EXTTYPE_UNKNOWN 0
 #define EXTTYPE_ALIGNMENT 1
+#define EXTTYPE_EXCLUDE 2
 struct extmatches {
 	struct extmatches *next;
 	int exttype;
 	int num;
-	char pattern[0];
-};
-
-struct excludes {
-	struct excludes *next;
 	char pattern[0];
 };
 
@@ -186,7 +182,6 @@ static char fixbuf[512];
 static int atoffs = 0;
 static int align = 16;
 struct extmatches *patterns = NULL;
-struct excludes *excludelist = NULL;
 int realbase;
 
 /* helper function to match an exclusion or align pattern */
@@ -534,7 +529,7 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 	DIR *dirfd;
 	struct dirent *dp;
 	struct filenode *n, *link;
-	struct excludes *pe;
+	struct extmatches *pa;
 
 	if (level <= 1) {
 		/* Ok, to make sure . and .. are handled correctly
@@ -576,10 +571,10 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 		n = newnode(base, dp->d_name, curroffset);
 
 		/* Process exclude list. */
-		for (pe = excludelist; pe; pe = pe->next) {
-			if (!nodematch(pe->pattern, n)) { freenode(n); break; }
+		for (pa = patterns; pa; pa = pa->next) {
+			if (pa->exttype == EXTTYPE_EXCLUDE && !nodematch(pa->pattern, n)) { freenode(n); break; }
 		}
-		if (pe) continue;
+		if (pa) continue;
 
 		if (lstat(n->realname, sb)) {
 			fprintf(stderr, "ignoring '%s' (lstat failed)\n", n->realname);
@@ -718,7 +713,6 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	char *p;
 	struct extmatches *pa, *pa2;
-	struct excludes *pe, *pe2;
 	FILE *f;
 
 	while ((c = getopt(argc, argv, "V:vd:f:ha:A:x:")) != EOF) {
@@ -771,15 +765,16 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 'x':
-			pe = (struct excludes *)malloc(sizeof(*pe) + strlen(optarg) + 1);
-			pe->next = NULL;
-			strcpy(pe->pattern, optarg);
-			if (!excludelist)
-				excludelist = pe;
+			pa = (struct extmatches *)malloc(sizeof(*pa) + strlen(optarg) + 1);
+			pa->exttype = EXTTYPE_EXCLUDE;
+			pa->next = NULL;
+			strcpy(pa->pattern, optarg);
+			if (!patterns)
+				patterns = pa;
 			else {
-				for (pe2 = excludelist; pe2->next; pe2 = pe2->next)
+				for (pa2 = patterns; pa2->next; pa2 = pa2->next)
 					;
-				pe2->next = pe;
+				pa2->next = pa;
 			}
 			break;
 		default:
