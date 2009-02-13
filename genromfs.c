@@ -389,6 +389,9 @@ void dumpnode(struct filenode *node, FILE *f)
 				exit(1);
 			}
 			close(fd);
+		} else {
+			fprintf(stderr,"file %s cannot be opened?\n",node->realname);
+			exit(1);
 		}
 		max = (max+15)&~15;
 		while (offset < max) {
