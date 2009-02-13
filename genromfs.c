@@ -376,6 +376,10 @@ void dumpnode(struct filenode *node, FILE *f)
 				dumpdata(bigbuf, len, f);
 				offset+=len;
 			}
+			if (offset != max) {
+				fprintf(stderr,"file %s changed size while reading?\n",node->realname);
+				exit(1);
+			}
 			if (!fstat(fd,&s)) {
 				realsize = s.st_size;
 			}
