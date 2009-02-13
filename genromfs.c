@@ -75,7 +75,9 @@
 #include <sys/sysmacros.h>
 #endif
 
+/* physical on-disk layout */
 
+/* 16 byte romfs header */
 struct romfh {
 	int32_t nextfh;
 	int32_t spec;
@@ -93,6 +95,8 @@ struct romfh {
 #define ROMFH_SCK 6
 #define ROMFH_FIF 7
 #define ROMFH_EXEC 8
+
+/* genromfs internal data types */
 
 struct filenode;
 
@@ -755,7 +759,6 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "-A takes N,PATTERN format of argument, where N is a number\n");
 				exit(1);
 			}
-			/* strlen(p+1) + 1 eq strlen(p) */
 			addpattern(EXTTYPE_ALIGNMENT,i,p+1);
 			break;
 		case 'x':
