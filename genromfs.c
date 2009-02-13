@@ -182,8 +182,8 @@ void shownode(int level, struct filenode *node, FILE *f)
 static char bigbuf[4096];
 static char fixbuf[512];
 static int atoffs = 0;
-struct extmatches *patterns = NULL;
-int realbase;
+static struct extmatches *patterns = NULL;
+static int realbase;
 
 #define DEFALIGN 16
 
