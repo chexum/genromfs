@@ -75,6 +75,12 @@
 #include <sys/sysmacros.h>
 #endif
 
+#ifdef O_BINARY
+#define O_RDBIN (O_RDONLY|O_BINARY)
+#else
+#define O_RDBIN O_RDONLY
+#endif
+
 /* physical on-disk layout */
 
 /* 16 byte romfs header */
@@ -358,12 +364,7 @@ void dumpnode(struct filenode *node, FILE *f)
 		dumpri(&ri, node, f);
 		offset = 0;
 		max = node->size;
-		/* XXX warn about size mismatch */
-		fd = open(node->realname, O_RDONLY
-#ifdef O_BINARY
-| O_BINARY
-#endif
-);
+		fd = open(node->realname, O_RDBIN);
 		if (fd) {
 			/* we cannot handle 64 bit file sizes */
 			int realsize=0;
