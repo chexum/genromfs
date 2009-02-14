@@ -834,6 +834,7 @@ int main(int argc, char *argv[])
 			i = (unsigned int)-1;
 			optpat = strchr(optarg,',');
 			if (optpat) { *optpat++ = 0; }
+			else { optpat=""; }
 			optn = strchr(optarg,':');
 			if (optn) {
 				*optn++ = 0;
