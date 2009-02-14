@@ -3,7 +3,7 @@
 # requires: GNU md5sum and bash, xxd from vim
 # known bug: file ordering is not actually specified
 
-NTESTS=11
+NTESTS=12
 FAIL=0
 I=0
 V=
@@ -97,6 +97,16 @@ testlabel Test new style alignment option
 echo aligned >stuff.txt
 echo del >*.sh
 eval $CMD $V -V ALIGNNEW -ealign:256,*.txt -f $tdir/img.bin
+testsummary
+
+testlabel Test permissions
+echo xxxx >u63.txt
+echo xxxx >g62.txt
+echo yyyy >u63g62.txt
+echo qqqq >u127g128.txt
+echo zzzz >su11.txt
+echo zzzz >sug62u63.txt
+eval $CMD $V -V PERMISSIONS -euid:63,*u63* -egid:62,*g62* -euid:127,*127* -egid:128,*128* -eperm:4511,su* -f $tdir/img.bin
 testsummary
 
 # remove stray files

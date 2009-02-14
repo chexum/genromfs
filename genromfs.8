@@ -1,4 +1,4 @@
-.TH GENROMFS 8 "Jun 2007" "Version 0.5.2"
+.TH GENROMFS 8 "Feb 2009" "Version 0.5.2"
 .SH NAME
 genromfs \- create a romfs image
 .SH SYNOPSIS
@@ -83,16 +83,91 @@ slashes, in which case files matching those patterns are matched in all
 directories, or start with a leading slash, in which case they are matched
 against absolute paths inside of the romfs filesystem (that is, as if you
 chrooted into the rom filesystem).
+
 .TP
 .BI -x \ pattern
 Allow to exclude files that match a pattern.
 It's useful to exclude CVS directories and backup files (ending in a '~').
+.TP
+.BI -i \ pattern
+Include files that match a pattern.  You can mix and match
+.B
+-i
+and
+.B
+-x
+options, they will be processed in the order specified.  You can exclude
+files matching
+.I
+*.bin
+but include
+.I
+boot*.bin
+later.
 .TP
 .BI -v
 Verbose operation,
 .B genromfs
 will print each file which is included in the image, along with
 its offset.
+
+.SH EXTENSION OPTIONS
+Except for the alignment options, these are not supported in current
+in-kernel
+.B
+romfs
+implementations as of early 2009.
+
+.TP
+.BI -ealign:N,PATTERN
+Same as the
+.B -AN,PATTERN
+option.
+
+.TP
+.BI -ealign:N
+Same as the
+.B -aN
+option.
+
+.TP
+.BI -eperm:N[,PATTERN]
+Will try to store the numeric (octal) permission for the files matching the pattern.  Examples are
+.B
+600
+for files accessible to their owners only, or
+.B
+4711
+for
+.I
+setuid
+files.
+The
+.I
+PATTERN
+is optional, if missing, it will apply to all files (which is not generally useful).
+
+.TP
+.BI -eperm[,PATTERN]
+Similar to the above option, except that the permission to store will be retrieved from the
+actual file.
+
+.TP
+.BI -euid:N[,PATTERN]
+
+.TP
+.BI -euid[,PATTERN]
+
+.TP
+.BI -egid:N[,PATTERN]
+
+.TP
+.BI -egid[,PATTERN]
+Similarly to the
+.I
+-eperm
+option, these options allow to store the file user-id and group-id information.
+
 .SH EXAMPLES
 
 .EX

@@ -104,6 +104,35 @@ struct romfh {
 
 #define ROMEXT_MAGIC3	"xyz"
 
+/*
+ * extension tag, starting backwards from the fileheader:
+ * ....
+ * TtTt TtTt TtTt TtTt
+ * TtTt TtTt xyzN CHKS
+ * NEXT SPEC SIZE CHKS <- the usual fileheader
+ * Tt: 16 bits of romext tags, the first few being 0
+ * xyzN: 16 bits of ID, N being the (binary) number of 16 byte "rows"
+ * CHKS: checksum spanning the whole
+ */
+
+#define ROMET_TYPE	0xf000	/* type of the tag */
+#define ROMET_VAL	0x0fff	/* value of the tag */
+
+/* reserved for extended attributes */
+#define ROMET_MORE	0x0000	/* 6+6 bits of further extensions */
+
+#define ROMET_MORETYPE	0x0fc0	/* 6 bits - additional extension type */
+#define ROMETMT_END	0x0000	/* end of extension tags */
+#define ROMET_MOREVAL	0x003f	/* 6 bits - number of int16s */
+
+#define ROMET_PERM	0x1000	/* 12 bits of permissions AND end of tags */
+#define ROMET_UGID	0x2000	/* 6+6 bits of uid/gid */
+#define ROMET_UID	0x3000	/* 12 additional bits of uid (ROLed in) */
+#define ROMET_GID	0x4000	/* 12 additional bits of gid (ROLed in) */
+#define ROMET_TIME	0x5000	/* 12 additional bits of timestamp (ROLed in) */
+#define ROMET_MARKER	0x7000	/* ignored -- header only */
+/* 0x6000/0x8000-0xf000 is reserved */
+
 /* genromfs internal data types */
 
 struct filenode;
@@ -131,17 +160,27 @@ struct filenode {
 	dev_t devnode;
 	ino_t onino;
 	mode_t modes;
+	uid_t nuid;
+	gid_t ngid;
 	unsigned int offset;
 	unsigned int realsize;
 	unsigned int prepad;
 	unsigned int postpad;
 	int exclude;
 	unsigned int align;
+	int extperm;
+	int extuid;
+	int extgid;
+	char extdata[32];
+	int extlen;
 };
 
 #define EXTTYPE_UNKNOWN 0
 #define EXTTYPE_ALIGNMENT 1
 #define EXTTYPE_EXCLUDE 2
+#define EXTTYPE_EXTPERM 3
+#define EXTTYPE_EXTUID 4
+#define EXTTYPE_EXTGID 5
 struct extmatches {
 	struct extmatches *next;
 	unsigned int exttype;
@@ -197,6 +236,7 @@ static char fixbuf[512];
 static int atoffs = 0;
 static struct extmatches *patterns = NULL;
 static int realbase;
+static int extlevel = 0;
 
 #define DEFALIGN 16
 
@@ -329,12 +369,17 @@ void dumpnode(struct filenode *node, FILE *f)
 	struct romfh ri;
 	struct filenode *p;
 
+	if (node->prepad)
+		dumpzero(node->prepad, f);
+	if (node->extlen) {
+		dumpdataa(node->extdata+sizeof(node->extdata)-node->extlen, node->extlen, f);
+	}
+
 	ri.nextfh = 0;
 	ri.spec = 0;
 	ri.size = htonl(node->realsize);
 	ri.checksum = htonl(0x55555555);
-	if (node->prepad)
-		dumpzero(node->prepad, f);
+
 	if (node->next && node->next->next)
 		ri.nextfh = htonl(node->next->offset);
 	if ((node->modes & 0111) &&
@@ -465,6 +510,8 @@ void setnode(struct filenode *n, struct stat *sb)
 	n->ondev = sb->st_dev;
 	n->onino = sb->st_ino;
 	n->modes = sb->st_mode;
+	n->nuid = sb->st_uid;
+	n->ngid = sb->st_gid;
 	n->realsize = 0;
 	/* only regular files and symlinks contain "data" in romfs */
 	if (S_ISREG(n->modes) || S_ISLNK(n->modes)) {
@@ -520,6 +567,13 @@ struct filenode *newnode(const char *base, const char *name, int curroffset)
 	node->offset = curroffset;
 	node->align = DEFALIGN;
 
+	/* -2: not specified */
+	/* -1: specified as blank (to copy original) */
+	/* N: specified */
+	node->extperm = -2;
+	node->extuid = -2;
+	node->extgid = -2;
+
 	return node;
 }
 
@@ -556,7 +610,7 @@ int alignnode(struct filenode *node, int curroffset, int extraspace)
 
 	if (S_ISREG(node->modes)) align = node->align;
 
-	/* Super secret feature will be commented later */
+	/* Just a safeguard to make sure file contents won't be mistaken for extension tags */
 	if ((checkpos = node->realsize) &&
 	    (((checkpos+8) & 15) <= 8)) {
 		if ((((checkpos+8)&15) == 8)) checkpos -= 16;
@@ -580,6 +634,9 @@ int alignnode(struct filenode *node, int curroffset, int extraspace)
 		}
 	}
 
+	curroffset += node->extlen;
+	node->offset += node->extlen;
+
 	d = ((curroffset + extraspace) & (align - 1));
 	if (d) {
 		align -= d;
@@ -589,6 +646,84 @@ int alignnode(struct filenode *node, int curroffset, int extraspace)
 	}
 
 	return curroffset+node->postpad;
+}
+
+/* Build romfs extension header */
+/* NOTE: The format change is not complete  */
+/* XXX: The root fh must be handled differently */
+
+int buildromext(struct filenode *node)
+{
+	unsigned int tag;
+	int extidx = sizeof(node->extdata);
+	char *romext=node->extdata;
+	unsigned int myuid,mygid;
+
+	memset(romext, 0, extidx);
+
+	/* XXX: add the number of extension lines (not tags) */
+	extidx-=8;
+	memcpy(romext+extidx,ROMEXT_MAGIC3,3);
+
+	/* override permissions if any given */
+	if (node->extperm != (unsigned int)-1 && node->extperm != (unsigned int)-2) {
+		node->modes = (node->modes&~07777)|node->extperm;
+	}
+	if (node->extuid != (unsigned int)-1 && node->extuid != (unsigned int)-2) {
+		node->nuid = node->extuid;
+	}
+	if (node->extgid != (unsigned int)-1 && node->extgid != (unsigned int)-2) {
+		node->ngid = node->extgid;
+	}
+
+	/* build romext */
+	if (node->extperm != (unsigned int)-2) {
+		tag=ROMET_PERM|(node->modes&07777);
+		romext[--extidx]=tag;
+		romext[--extidx]=tag>>8;
+	}
+	myuid = node->nuid;
+	mygid = node->ngid;
+	if (node->extuid == (unsigned int)-2) { myuid = 0; }
+	if (node->extgid == (unsigned int)-2) { mygid = 0; }
+	if ((myuid && mygid) &&
+	     ( (myuid <= 077 && mygid <= 077)) ) {
+		tag=ROMET_UGID|((myuid&077)<<6|(mygid&077));
+		romext[--extidx]=tag;
+		romext[--extidx]=tag>>8;
+		myuid >>= 6;
+		mygid >>= 6;
+	}
+	while (myuid) {
+		tag=ROMET_UID|(myuid&0777);
+		romext[--extidx]=tag;
+		romext[--extidx]=tag>>8;
+		myuid >>= 12;
+	}
+	while (mygid) {
+		tag=ROMET_GID|(mygid&0777);
+		romext[--extidx]=tag;
+		romext[--extidx]=tag>>8;
+		mygid >>= 12;
+	}
+
+	if (extidx == (sizeof(node->extdata)-8)) {
+		return 0;
+	}
+
+	/* set ext pointer */
+	extidx &= ~15;
+	node->extlen = sizeof(node->extdata)-extidx;
+	tag = htonl(-romfs_checksum(node->extdata+extidx, node->extlen));
+
+	/* store checksum */
+	romext = node->extdata + sizeof(node->extdata);
+	*--romext=tag;
+	*--romext=tag>>8;
+	*--romext=tag>>16;
+	*--romext=tag>>24;
+
+	return node->extlen;
 }
 
 int processdir(int level, const char *base, const char *dirname, struct stat *sb,
@@ -643,6 +778,9 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 			if (!nodematch(pa->pattern, n)) {
 				if (pa->exttype == EXTTYPE_EXCLUDE) { n->exclude = pa->num; }
 				if (pa->exttype == EXTTYPE_ALIGNMENT) { n->align = pa->num; }
+				if (pa->exttype == EXTTYPE_EXTPERM) { extlevel |= 1; n->extperm = pa->num; }
+				if (pa->exttype == EXTTYPE_EXTUID) { extlevel |= 1; n->extuid = pa->num; }
+				if (pa->exttype == EXTTYPE_EXTGID) { extlevel |= 1; n->extgid = pa->num; }
 			}
 		}
 		if (n->exclude) { freenode(n); continue; }
@@ -731,6 +869,8 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 			n->devnode = sb->st_rdev;
 		}
 
+		buildromext(n);
+
 		if (S_ISREG(sb->st_mode)) {
 			curroffset = alignnode(n, curroffset, spaceneeded(n,0));
 		} else {
@@ -738,7 +878,6 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 		}
 
 		curroffset += spaceneeded(n,n->realsize);
-
 
 		if (S_ISDIR(sb->st_mode)) {
 			if (!strcmp(n->name, "..")) {
@@ -855,6 +994,26 @@ int main(int argc, char *argv[])
 					exit(1);
 				}
 				addpattern(EXTTYPE_ALIGNMENT,i,optpat);
+			/* -eperm:N[,PATTERN] - set permissions for pattern */
+			/* -eperm[,PATTERN] - save permissions for pattern */
+			} else if (!strcmp(optarg,"perm")) {
+				/* reparse it in octal */
+				if (optn) {
+					i = strtoul(optn,&p,8);
+					if (*p != 0 || (i != (unsigned int)-1 && i&~07777)) {
+						fprintf(stderr,"-e%s:N must be octal and less than 07777\n",optarg);
+						exit(1);
+					}
+				}
+				addpattern(EXTTYPE_EXTPERM,i,optpat);
+			/* -euid:N[,PATTERN] - set uid for pattern */
+			/* -euid[,PATTERN] - save uid for pattern */
+			} else if (!strcmp(optarg,"uid")) {
+				addpattern(EXTTYPE_EXTUID,i,optpat);
+			/* -egid:N[,PATTERN] - set uid for pattern */
+			/* -egid[,PATTERN] - save uid for pattern */
+			} else if (!strcmp(optarg,"gid")) {
+				addpattern(EXTTYPE_EXTGID,i,optpat);
 			} else {
 				fprintf(stderr,"-e%s not recognised\n",optarg);
 			}
