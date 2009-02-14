@@ -130,7 +130,7 @@ struct filenode {
 	ino_t onino;
 	mode_t modes;
 	unsigned int offset;
-	unsigned int size;
+	unsigned int realsize;
 	unsigned int pad;
 	int exclude;
 	unsigned int align;
@@ -173,7 +173,7 @@ void shownode(int level, struct filenode *node, FILE *f)
 	struct filenode *p;
 	fprintf(f, "%-4d %-20s [0x%-8x, 0x%-8x] %07o, sz %5u, at 0x%-6x",
 		level, node->name,
-		(int)node->ondev, (int)node->onino, node->modes, node->size,
+		(int)node->ondev, (int)node->onino, node->modes, node->realsize,
 		node->offset);
 
 	if (node->orig_link)
@@ -328,7 +328,7 @@ void dumpnode(struct filenode *node, FILE *f)
 
 	ri.nextfh = 0;
 	ri.spec = 0;
-	ri.size = htonl(node->size);
+	ri.size = htonl(node->realsize);
 	ri.checksum = htonl(0x55555555);
 	if (node->pad)
 		dumpzero(node->pad, f);
@@ -356,18 +356,18 @@ void dumpnode(struct filenode *node, FILE *f)
 		ri.nextfh |= htonl(ROMFH_LNK);
 		dumpri(&ri, node, f);
 		memset(bigbuf, 0, sizeof(bigbuf));
-		readlink(node->realname, bigbuf, node->size);
-		dumpdataa(bigbuf, node->size, f);
+		readlink(node->realname, bigbuf, node->realsize);
+		dumpdataa(bigbuf, node->realsize, f);
 	} else if (S_ISREG(node->modes)) {
 		int offset, len, fd, max, avail;
 		ri.nextfh |= htonl(ROMFH_REG);
 		dumpri(&ri, node, f);
 		offset = 0;
-		max = node->size;
+		max = node->realsize;
 		fd = open(node->realname, O_RDBIN);
 		if (fd) {
 			/* we cannot handle 64 bit file sizes */
-			int realsize=0;
+			unsigned int realsize=0;
 			struct stat s;
 			while(offset < max) {
 				avail = max-offset < sizeof(bigbuf) ? max-offset : sizeof(bigbuf);
@@ -455,11 +455,16 @@ void freenode(struct filenode *n)
 	/* Rare, not yet */
 }
 
-void setnode(struct filenode *n, dev_t dev, ino_t ino, mode_t um)
+void setnode(struct filenode *n, struct stat *sb)
 {
-	n->ondev = dev;
-	n->onino = ino;
-	n->modes = um;
+	n->ondev = sb->st_dev;
+	n->onino = sb->st_ino;
+	n->modes = sb->st_mode;
+	n->realsize = 0;
+	/* only regular files and symlinks contain "data" in romfs */
+	if (S_ISREG(n->modes) || S_ISLNK(n->modes)) {
+		n->realsize = sb->st_size;
+	}
 }
 
 struct filenode *newnode(const char *base, const char *name, int curroffset)
@@ -532,9 +537,9 @@ struct filenode *findnode(struct filenode *node, dev_t dev, ino_t ino)
 
 #define ALIGNUP16(x) (((x)+15)&~15)
 
-int spaceneeded(struct filenode *node)
+int spaceneeded(struct filenode *node, unsigned int sz)
 {
-	return 16 + ALIGNUP16(strlen(node->name)+1) + ALIGNUP16(node->size);
+	return 16 + ALIGNUP16(strlen(node->name)+1) + ALIGNUP16(sz);
 }
 
 int alignnode(struct filenode *node, int curroffset, int extraspace)
@@ -568,7 +573,7 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 		 */
 		link = newnode(base, ".", curroffset);
 		if (!lstat(link->realname, sb)) {
-			setnode(link, sb->st_dev, sb->st_ino, sb->st_mode);
+			setnode(link, sb);
 			append(&dir->dirlist, link);
 
 			/* special case for root node - '..'s in subdirs should link to
@@ -576,14 +581,14 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 			 */
 			dir->dirlist.owner = link;
 
-			curroffset = alignnode(link, curroffset, 0) + spaceneeded(link);
+			curroffset = alignnode(link, curroffset, 0) + spaceneeded(link,0);
 			n = newnode(base, "..", curroffset);
 
 			if (!lstat(n->realname, sb)) {
-				setnode(n, sb->st_dev, sb->st_ino, sb->st_mode);
+				setnode(n, sb);
 				append(&dir->dirlist, n);
 				n->orig_link = link;
-				curroffset = alignnode(n, curroffset, 0) + spaceneeded(n);
+				curroffset = alignnode(n, curroffset, 0) + spaceneeded(n,0);
 			}
 		}
 	}
@@ -663,7 +668,7 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 			}
 		}
 
-		setnode(n, sb->st_dev, sb->st_ino, sb->st_mode);
+		setnode(n, sb);
 		/* Skip unreadable files/dirs */
 		if (!S_ISLNK(n->modes) && access(n->realname, R_OK)) {
 			fprintf(stderr, "ignoring '%s' (access failed)\n", n->realname);
@@ -683,22 +688,24 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 		}
 
 		if (link) {
+			n->realsize = 0;
 			n->orig_link = link;
-			curroffset = alignnode(n, curroffset, 0) + spaceneeded(n);
+			curroffset = alignnode(n, curroffset, 0) + spaceneeded(n,0);
 			continue;
 		}
-		if (S_ISREG(sb->st_mode)) {
-			curroffset = alignnode(n, curroffset, spaceneeded(n));
-			n->size = sb->st_size;
-		} else
-			curroffset = alignnode(n, curroffset, 0);
-		if (S_ISLNK(sb->st_mode)) {
-			n->size = sb->st_size;
-		}
-		curroffset += spaceneeded(n);
+
 		if (S_ISCHR(sb->st_mode) || S_ISBLK(sb->st_mode)) {
 			n->devnode = sb->st_rdev;
 		}
+
+		if (S_ISREG(sb->st_mode)) {
+			curroffset = alignnode(n, curroffset, spaceneeded(n,0));
+		} else {
+			curroffset = alignnode(n, curroffset, 0);
+		}
+
+		curroffset += spaceneeded(n,n->realsize);
+
 
 		if (S_ISDIR(sb->st_mode)) {
 			if (!strcmp(n->name, "..")) {
@@ -814,7 +821,7 @@ int main(int argc, char *argv[])
 	realbase = strlen(dir);
 	root = newnode(dir, volname, 0);
 	root->parent = root;
-	lastoff = processdir (1, dir, dir, &sb, root, root, spaceneeded(root));
+	lastoff = processdir (1, dir, dir, &sb, root, root, spaceneeded(root,0));
 	if (verbose)
 		shownode(0, root, stderr);
 	dumpall(root, lastoff, f);
