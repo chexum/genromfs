@@ -767,6 +767,7 @@ void showhelp(const char *argv0)
 	printf("  -a ALIGN               Align regular file data to ALIGN bytes\n");
 	printf("  -A ALIGN,PATTERN       Align all objects matching pattern to at least ALIGN bytes\n");
 	printf("  -x PATTERN             Exclude all objects matching pattern\n");
+	printf("  -i PATTERN             Include all objects matching pattern\n");
 	printf("  -h                     Show this help\n");
 	printf("\n");
 	printf("To report bugs check http://romfs.sf.net/\n");
@@ -787,7 +788,7 @@ int main(int argc, char *argv[])
 	char *p;
 	FILE *f;
 
-	while ((c = getopt(argc, argv, "V:vd:f:ha:A:x:")) != EOF) {
+	while ((c = getopt(argc, argv, "V:vd:f:ha:A:x:i:")) != EOF) {
 		switch(c) {
 		case 'd':
 			dir = optarg;
@@ -824,8 +825,9 @@ int main(int argc, char *argv[])
 			}
 			addpattern(EXTTYPE_ALIGNMENT,i,p+1);
 			break;
+		case 'i':
 		case 'x':
-			addpattern(EXTTYPE_EXCLUDE,1,optarg);
+			addpattern(EXTTYPE_EXCLUDE,c=='x',optarg);
 			break;
 		default:
 			exit(1);

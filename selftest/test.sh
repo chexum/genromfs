@@ -86,6 +86,13 @@ echo unwanted >gamma
 eval $CMD $V -V EXCLUDES -x '"*a*a"' -f $tdir/img.bin
 testsummary
 
+testlabel Test exclude/includes
+echo wanted >good.txt
+echo not >stuff.txt
+echo del >erase.txt
+eval $CMD $V -V INCLUDES -x '"*"' '"-i*good*"' -f $tdir/img.bin
+testsummary
+
 # remove stray files
 rm -f *
 

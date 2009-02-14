@@ -1,4 +1,5 @@
 Changes since release 0.5.2:
+* Implemented including files by pattern, and combining this with excludes
 * It is now possible to override alignment with a smaller value:
   genromfs -A2048,*.boot -A1024,m68k.boot -A512,m68k.boot
 
