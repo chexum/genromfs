@@ -44,7 +44,7 @@ dist:
 	rm -rf $(DISTDIR)
 
 check:	all selftest
-	$(SHELL) -c "cd selftest; bash test.sh"
+	$(MAKE) -C selftest dotest
 
 install: all install-bin install-man
 

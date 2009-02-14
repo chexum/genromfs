@@ -3,7 +3,7 @@
 # requires: GNU md5sum and bash, xxd from vim
 # known bug: file ordering is not actually specified
 
-NTESTS=9
+NTESTS=10
 FAIL=0
 I=0
 V=
