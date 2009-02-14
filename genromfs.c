@@ -144,8 +144,8 @@ struct filenode {
 #define EXTTYPE_EXCLUDE 2
 struct extmatches {
 	struct extmatches *next;
-	int exttype;
-	int num;
+	unsigned int exttype;
+	unsigned int num;
 	char pattern[0];
 };
 
@@ -785,10 +785,10 @@ int main(int argc, char *argv[])
 	struct stat sb;
 	int lastoff;
 	unsigned int i;
-	char *p;
+	char *p,*optn,*optpat;
 	FILE *f;
 
-	while ((c = getopt(argc, argv, "V:vd:f:ha:A:x:i:")) != EOF) {
+	while ((c = getopt(argc, argv, "V:vd:f:ha:A:x:i:e:")) != EOF) {
 		switch(c) {
 		case 'd':
 			dir = optarg;
@@ -828,6 +828,35 @@ int main(int argc, char *argv[])
 		case 'i':
 		case 'x':
 			addpattern(EXTTYPE_EXCLUDE,c=='x',optarg);
+			break;
+		/* -e EXT[:VAL][,PATTERN] */
+		case 'e':
+			i = (unsigned int)-1;
+			optpat = strchr(optarg,',');
+			if (optpat) { *optpat++ = 0; }
+			optn = strchr(optarg,':');
+			if (optn) {
+				*optn++ = 0;
+				i = strtoul(optn,&p,0);
+				if (*p != 0) {
+					fprintf(stderr,"-e%s:N,PATTERN must be numeric\n",optarg);
+					exit(1);
+				}
+			}
+			/* -ealign:N,PATTERN */
+			if (!strcmp(optarg,"align")) {
+				if (i == (unsigned int)-1) {
+					fprintf(stderr,"-e%s:N,PATTERN needs value\n",optarg);
+					exit(1);
+				}
+				if (i < 16 || (i & (i - 1))) {
+					fprintf(stderr, "Alignment has to be at least 16 bytes and a power of two\n");
+					exit(1);
+				}
+				addpattern(EXTTYPE_ALIGNMENT,i,optpat);
+			} else {
+				fprintf(stderr,"-e%s not recognised\n",optarg);
+			}
 			break;
 		default:
 			exit(1);

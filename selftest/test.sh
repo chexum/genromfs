@@ -3,7 +3,7 @@
 # requires: GNU md5sum and bash, xxd from vim
 # known bug: file ordering is not actually specified
 
-NTESTS=10
+NTESTS=11
 FAIL=0
 I=0
 V=
@@ -91,6 +91,12 @@ echo wanted >good.txt
 echo not >stuff.txt
 echo del >erase.txt
 eval $CMD $V -V INCLUDES -x '"*"' '"-i*good*"' -f $tdir/img.bin
+testsummary
+
+testlabel Test new style alignment option
+echo aligned >stuff.txt
+echo del >*.sh
+eval $CMD $V -V ALIGNNEW -ealign:256,*.txt -f $tdir/img.bin
 testsummary
 
 # remove stray files
