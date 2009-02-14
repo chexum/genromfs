@@ -60,8 +60,10 @@ eval $CMD $V -V ABSALIGNED -A '128,/t03*' -f $tdir/img.bin
 testsummary
 
 testlabel Test image with file data
-echo 01230123www1012 >rom1a.txt
-echo 01230123www1012 >rom1b.txt
+echo 01230123uuu1012 >rom1a.txt
+echo 01230123xyza012 >rom1b.txt
+ln -s 01230123xyz1    rom1c.dat
+ln -s rom1b.txt       rom1d.txt
 eval $CMD $V -V EXTDATA -f $tdir/img.bin
 testsummary
 

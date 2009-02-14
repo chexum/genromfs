@@ -102,6 +102,8 @@ struct romfh {
 #define ROMFH_FIF 7
 #define ROMFH_EXEC 8
 
+#define ROMEXT_MAGIC3	"xyz"
+
 /* genromfs internal data types */
 
 struct filenode;
@@ -131,7 +133,8 @@ struct filenode {
 	mode_t modes;
 	unsigned int offset;
 	unsigned int realsize;
-	unsigned int pad;
+	unsigned int prepad;
+	unsigned int postpad;
 	int exclude;
 	unsigned int align;
 };
@@ -330,8 +333,8 @@ void dumpnode(struct filenode *node, FILE *f)
 	ri.spec = 0;
 	ri.size = htonl(node->realsize);
 	ri.checksum = htonl(0x55555555);
-	if (node->pad)
-		dumpzero(node->pad, f);
+	if (node->prepad)
+		dumpzero(node->prepad, f);
 	if (node->next && node->next->next)
 		ri.nextfh = htonl(node->next->offset);
 	if ((node->modes & 0111) &&
@@ -420,6 +423,8 @@ void dumpnode(struct filenode *node, FILE *f)
 		ri.nextfh |= htonl(ROMFH_SCK);
 		dumpri(&ri, node, f);
 	}
+	if (node->postpad)
+		dumpzero(node->postpad, f);
 
 	p = node->dirlist.head;
 	while (p->next) {
@@ -546,16 +551,44 @@ int alignnode(struct filenode *node, int curroffset, int extraspace)
 {
 	int d;
 	unsigned int align = DEFALIGN;
+	unsigned int checkpos;
+	int fd;
+
 	if (S_ISREG(node->modes)) align = node->align;
+
+	/* Super secret feature will be commented later */
+	if ((checkpos = node->realsize) &&
+	    (((checkpos+8) & 15) <= 8)) {
+		if ((((checkpos+8)&15) == 8)) checkpos -= 16;
+		checkpos &= ~15;
+
+		if (S_ISREG(node->modes)) {
+			if ((fd = open(node->realname, O_RDBIN)) >= 0) {
+				memset(bigbuf, 0, 16);
+				read(fd, bigbuf, 16);
+				checkpos = 0;
+			}
+		} else if (S_ISLNK(node->modes)) {
+			memset(bigbuf, 0, sizeof(bigbuf));
+			readlink(node->realname, bigbuf, sizeof(bigbuf)-1);
+		} else {
+			fprintf(stderr,"internal error, %s has size?\n", node->realname);
+			exit(1);
+		}
+		if(!memcmp(bigbuf+checkpos+8, ROMEXT_MAGIC3, 3)) {
+			node->postpad += 16;
+		}
+	}
 
 	d = ((curroffset + extraspace) & (align - 1));
 	if (d) {
 		align -= d;
 		curroffset += align;
 		node->offset += align;
-		node->pad = align;
+		node->prepad = align;
 	}
-	return curroffset;
+
+	return curroffset+node->postpad;
 }
 
 int processdir(int level, const char *base, const char *dirname, struct stat *sb,
