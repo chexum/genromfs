@@ -655,13 +655,13 @@ int alignnode(struct filenode *node, int curroffset, int extraspace)
 int buildromext(struct filenode *node)
 {
 	unsigned int tag;
-	int extidx = sizeof(node->extdata);
+	unsigned int extidx,extend;
 	char *romext=node->extdata;
 	unsigned int myuid,mygid;
 
+	extend = extidx = sizeof(node->extdata);
 	memset(romext, 0, extidx);
 
-	/* XXX: add the number of extension lines (not tags) */
 	extidx-=8;
 	memcpy(romext+extidx,ROMEXT_MAGIC3,3);
 
@@ -707,17 +707,19 @@ int buildromext(struct filenode *node)
 		mygid >>= 12;
 	}
 
-	if (extidx == (sizeof(node->extdata)-8)) {
+	if (extidx == (extend-8)) {
 		return 0;
 	}
 
-	/* set ext pointer */
+	/* compute the aligned start */
 	extidx &= ~15;
-	node->extlen = sizeof(node->extdata)-extidx;
+	node->extlen = extend-extidx;
 	tag = htonl(-romfs_checksum(node->extdata+extidx, node->extlen));
+	/* the number of 16 byte lines in the extension header */
+	node->extdata[extend-5] = node->extlen>>4;
 
 	/* store checksum */
-	romext = node->extdata + sizeof(node->extdata);
+	romext = node->extdata + extend;
 	*--romext=tag;
 	*--romext=tag>>8;
 	*--romext=tag>>16;
