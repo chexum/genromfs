@@ -695,13 +695,13 @@ int buildromext(struct filenode *node)
 		mygid >>= 6;
 	}
 	while (myuid) {
-		tag=ROMET_UID|(myuid&0777);
+		tag=ROMET_UID|(myuid&0xfff);
 		romext[--extidx]=tag;
 		romext[--extidx]=tag>>8;
 		myuid >>= 12;
 	}
 	while (mygid) {
-		tag=ROMET_GID|(mygid&0777);
+		tag=ROMET_GID|(mygid&0xfff);
 		romext[--extidx]=tag;
 		romext[--extidx]=tag>>8;
 		mygid >>= 12;
