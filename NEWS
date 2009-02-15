@@ -1,4 +1,5 @@
-Changes since release 0.5.2:
+Changes in (pre)release 0.5.7:
+
 * A test suite is now included (but may not work correctly in all
   circumstances).
 * Implemented including files by pattern, and combining this with excludes
