@@ -162,6 +162,7 @@ struct filenode {
 	mode_t modes;
 	uid_t nuid;
 	gid_t ngid;
+	time_t ntime;
 	unsigned int offset;
 	unsigned int realsize;
 	unsigned int prepad;
@@ -171,6 +172,7 @@ struct filenode {
 	int extperm;
 	int extuid;
 	int extgid;
+	int exttime;
 	char extdata[32];
 	int extlen;
 };
@@ -181,6 +183,7 @@ struct filenode {
 #define EXTTYPE_EXTPERM 3
 #define EXTTYPE_EXTUID 4
 #define EXTTYPE_EXTGID 5
+#define EXTTYPE_EXTTIME 6
 struct extmatches {
 	struct extmatches *next;
 	unsigned int exttype;
@@ -512,6 +515,7 @@ void setnode(struct filenode *n, struct stat *sb)
 	n->modes = sb->st_mode;
 	n->nuid = sb->st_uid;
 	n->ngid = sb->st_gid;
+	n->ntime = sb->st_mtime;
 	n->realsize = 0;
 	/* only regular files and symlinks contain "data" in romfs */
 	if (S_ISREG(n->modes) || S_ISLNK(n->modes)) {
@@ -567,12 +571,13 @@ struct filenode *newnode(const char *base, const char *name, int curroffset)
 	node->offset = curroffset;
 	node->align = DEFALIGN;
 
-	/* -2: not specified */
+	/* -2: specified without value */
 	/* -1: specified as blank (to copy original) */
 	/* N: specified */
 	node->extperm = -2;
 	node->extuid = -2;
 	node->extgid = -2;
+	node->exttime = -2;
 
 	return node;
 }
@@ -658,6 +663,7 @@ int buildromext(struct filenode *node)
 	unsigned int extidx,extend;
 	char *romext=node->extdata;
 	unsigned int myuid,mygid;
+	unsigned int mytime;
 
 	extend = extidx = sizeof(node->extdata);
 	memset(romext, 0, extidx);
@@ -674,6 +680,11 @@ int buildromext(struct filenode *node)
 	}
 	if (node->extgid != (unsigned int)-1 && node->extgid != (unsigned int)-2) {
 		node->ngid = node->extgid;
+	}
+	if (node->exttime != (unsigned int)-1 && node->exttime != (unsigned int)-2) {
+		node->ntime = node->exttime;
+	} else {
+		node->ntime = 0;
 	}
 
 	/* build romext */
@@ -706,6 +717,14 @@ int buildromext(struct filenode *node)
 		romext[--extidx]=tag>>8;
 		mygid >>= 12;
 	}
+	mytime = node->ntime;
+	while (mytime) {
+		tag=ROMET_TIME|(mytime&0xfff);
+		romext[--extidx]=tag;
+		romext[--extidx]=tag>>8;
+		mytime >>= 12;
+	}
+
 
 	if (extidx == (extend-8)) {
 		return 0;
@@ -783,6 +802,7 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 				if (pa->exttype == EXTTYPE_EXTPERM) { extlevel |= 1; n->extperm = pa->num; }
 				if (pa->exttype == EXTTYPE_EXTUID) { extlevel |= 1; n->extuid = pa->num; }
 				if (pa->exttype == EXTTYPE_EXTGID) { extlevel |= 1; n->extgid = pa->num; }
+				if (pa->exttype == EXTTYPE_EXTTIME) { extlevel |= 1; n->exttime = pa->num; }
 			}
 		}
 		if (n->exclude) { freenode(n); continue; }
@@ -1016,6 +1036,10 @@ int main(int argc, char *argv[])
 			/* -egid[,PATTERN] - save uid for pattern */
 			} else if (!strcmp(optarg,"gid")) {
 				addpattern(EXTTYPE_EXTGID,i,optpat);
+			/* -etime:N[,PATTERN] - set timestamp for pattern */
+			/* -etime[,PATTERN] - save timestamp for pattern */
+			} else if (!strcmp(optarg,"time")) {
+				addpattern(EXTTYPE_EXTTIME,i,optpat);
 			} else {
 				fprintf(stderr,"-e%s not recognised\n",optarg);
 			}

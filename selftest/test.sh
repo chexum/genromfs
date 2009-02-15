@@ -3,7 +3,7 @@
 # requires: GNU md5sum and bash, xxd from vim
 # known bug: file ordering is not actually specified
 
-NTESTS=12
+NTESTS=13
 FAIL=0
 I=0
 V=
@@ -108,6 +108,15 @@ echo zzzz >su11.txt
 echo zzzz >sug62u63.txt
 eval $CMD $V -V PERMISSIONS -euid:63,*u63* -egid:62,*g62* -euid:127,*127* -egid:128,*128* -eperm:4511,su* -f $tdir/img.bin
 testsummary
+
+testlabel Test devices/permissions
+mkdir dev
+touch dev/@null,c,1,3
+touch dev/@zero,c,1,5
+echo 1234567890 >feb14.txt
+eval $CMD $V -V DEVICES -eperm:711,/dev -eperm:666,/dev/* -etime:1234567890,feb14* -euid:100,feb* -egid:200,feb* -f $tdir/img.bin
+testsummary
+rm -rf dev
 
 # remove stray files
 rm -f *
