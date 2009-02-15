@@ -156,6 +156,7 @@ struct filenode {
 	struct filenode *orig_link;
 	char *name;
 	char *realname;
+	int isrootdot;
 	dev_t ondev;
 	dev_t devnode;
 	ino_t onino;
@@ -352,6 +353,11 @@ void dumpri(struct romfh *ri, struct filenode *n, FILE *f)
 	if (len&15) {
 		memset(bigbuf+16+len, 0, 16-(len&15));
 		len += 16-(len&15);
+	}
+	/* special marker for present extensions */
+	if (n->isrootdot == 1 && extlevel) {
+		memcpy(bigbuf+16+8, ROMEXT_MAGIC3, 3);
+		fixsum((struct romfh *)(bigbuf + 16), 16);
 	}
 	len+=16;
 	ri=(struct romfh *)bigbuf;
@@ -655,7 +661,7 @@ int alignnode(struct filenode *node, int curroffset, int extraspace)
 
 /* Build romfs extension header */
 /* NOTE: The format change is not complete  */
-/* XXX: The root fh must be handled differently */
+/* XXX: root permissions must be stored in /.. */
 
 int buildromext(struct filenode *node)
 {
@@ -664,6 +670,9 @@ int buildromext(struct filenode *node)
 	char *romext=node->extdata;
 	unsigned int myuid,mygid;
 	unsigned int mytime;
+
+	/* root dir cannot be extended */
+	if (node->isrootdot == 1) return 0;
 
 	extend = extidx = sizeof(node->extdata);
 	memset(romext, 0, extidx);
@@ -755,23 +764,26 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 	struct filenode *n, *link;
 	struct extmatches *pa;
 
+	/* To make sure . and .. are handled correctly in the
+	 * root directory, we add them first.  Note also that we
+	 * alloc them first to get to know the real name
+	 */
 	if (level <= 1) {
-		/* Ok, to make sure . and .. are handled correctly
-		 * we add them first.  Note also that we alloc them
-		 * first to get to know the real name
-		 */
 		link = newnode(base, ".", curroffset);
+		link->isrootdot = 1;
 		if (!lstat(link->realname, sb)) {
 			setnode(link, sb);
 			append(&dir->dirlist, link);
 
-			/* special case for root node - '..'s in subdirs should link to
-			 *   '.' of root node, not root node itself.
+			/* special case for root node - '..'s in
+			 * subdirs should link to '.' of root
+			 * node, not root node itself.
 			 */
 			dir->dirlist.owner = link;
 
 			curroffset = alignnode(link, curroffset, 0) + spaceneeded(link,0);
 			n = newnode(base, "..", curroffset);
+			n->isrootdot = 2;
 
 			if (!lstat(n->realname, sb)) {
 				setnode(n, sb);
