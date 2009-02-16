@@ -702,38 +702,71 @@ int buildromext(struct filenode *node)
 		romext[--extidx]=tag;
 		romext[--extidx]=tag>>8;
 	}
+
 	myuid = node->nuid;
 	mygid = node->ngid;
 	if (node->extuid == (unsigned int)-2) { myuid = 0; }
 	if (node->extgid == (unsigned int)-2) { mygid = 0; }
+
+	/* try our chance to pack both in a single tag */
 	if ((myuid && mygid) &&
 	     ( (myuid <= 077 && mygid <= 077)) ) {
 		tag=ROMET_UGID|((myuid&077)<<6|(mygid&077));
 		romext[--extidx]=tag;
 		romext[--extidx]=tag>>8;
-		myuid >>= 6;
-		mygid >>= 6;
-	}
-	while (myuid) {
-		tag=ROMET_UID|(myuid&0xfff);
-		romext[--extidx]=tag;
-		romext[--extidx]=tag>>8;
-		myuid >>= 12;
-	}
-	while (mygid) {
-		tag=ROMET_GID|(mygid&0xfff);
-		romext[--extidx]=tag;
-		romext[--extidx]=tag>>8;
-		mygid >>= 12;
-	}
-	mytime = node->ntime;
-	while (mytime) {
-		tag=ROMET_TIME|(mytime&0xfff);
-		romext[--extidx]=tag;
-		romext[--extidx]=tag>>8;
-		mytime >>= 12;
+		myuid = 0; mygid = 0;
 	}
 
+	/* no luck, pack uid first */
+	if (myuid) {
+		if (myuid & ~0xfff) {
+			if (myuid & ~0xffffff) {
+				tag=ROMET_UID|((myuid>>24)&0xfff);
+				romext[--extidx]=tag;
+				romext[--extidx]=tag>>8;
+			}
+			tag=ROMET_UID|((myuid>>12)&0xfff);
+			romext[--extidx]=tag;
+			romext[--extidx]=tag>>8;
+		}
+		tag=ROMET_UID|((myuid)&0xfff);
+		romext[--extidx]=tag;
+		romext[--extidx]=tag>>8;
+	}
+
+	/* pack gid later */
+	if (mygid) {
+		if (mygid & ~0xfff) {
+			if (mygid & ~0xffffff) {
+				tag=ROMET_GID|((mygid>>24)&0xfff);
+				romext[--extidx]=tag;
+				romext[--extidx]=tag>>8;
+			}
+			tag=ROMET_GID|((mygid>>12)&0xfff);
+			romext[--extidx]=tag;
+			romext[--extidx]=tag>>8;
+		}
+		tag=ROMET_GID|((mygid)&0xfff);
+		romext[--extidx]=tag;
+		romext[--extidx]=tag>>8;
+	}
+
+	/* time -- might work with 36 bits of time */
+	if ((mytime = node->ntime)) {
+		if (mytime & ~0xfff) {
+			if (mytime & ~0xffffff) {
+				tag=ROMET_TIME|((mytime>>24)&0xfff);
+				romext[--extidx]=tag;
+				romext[--extidx]=tag>>8;
+			}
+			tag=ROMET_TIME|((mytime>>12)&0xfff);
+			romext[--extidx]=tag;
+			romext[--extidx]=tag>>8;
+		}
+		tag=ROMET_TIME|((mytime)&0xfff);
+		romext[--extidx]=tag;
+		romext[--extidx]=tag>>8;
+	}
 
 	if (extidx == (extend-8)) {
 		return 0;

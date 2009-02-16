@@ -1,4 +1,9 @@
-Changes in (pre)release 0.5.7:
+Changes since 0.5.7:
+
+* Tags were stored in an incorrect order, making any value of uids, gids and
+  timestamps larger than 4095 ending up with a wrong value.
+
+Changes in the not released 0.5.7:
 
 * A test suite is now included (but may not work correctly in all
   circumstances).
