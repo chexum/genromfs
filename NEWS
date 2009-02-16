@@ -46,4 +46,15 @@ Changes in release 0.5:
 
 Changes in release 0.3:
 
-* in progress
+* Support file data to be aligned on larger than 16 byte boundary
+  by Jakub Jelinek.
+
+Changes in release 0.2:
+
+* Added manual page by Christoph Lameter.
+* Added help option.
+* Added install target.
+
+Changes in release 0.1:
+
+* Initial release.
