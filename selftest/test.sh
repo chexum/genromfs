@@ -126,3 +126,9 @@ echo $FAIL failures found
 cd $tdir
 rm -f img.bin
 rmdir testimg
+
+if [ "x$FAIL" != "x0" ]; then
+  exit 1
+fi
+
+exit 0
