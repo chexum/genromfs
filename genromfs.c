@@ -67,6 +67,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <errno.h>
 
 #include <netinet/in.h>	/* Consts & structs defined by the internet system */
 
@@ -1044,8 +1045,9 @@ int main(int argc, char *argv[])
 			optn = strchr(optarg,':');
 			if (optn) {
 				*optn++ = 0;
+				errno = 0;
 				i = strtoul(optn,&p,0);
-				if (*p != 0) {
+				if (*p != 0 || errno) {
 					fprintf(stderr,"-e%s:N,PATTERN must be numeric\n",optarg);
 					exit(1);
 				}

@@ -1,5 +1,6 @@
 Changes since 0.5.7:
 
+* Detect unparseable numbers in the extended options.
 * Tags were stored in an incorrect order, making any value of uids, gids and
   timestamps larger than 4095 ending up with a wrong value.
 
