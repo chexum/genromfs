@@ -578,9 +578,9 @@ struct filenode *newnode(const char *base, const char *name, int curroffset)
 	node->offset = curroffset;
 	node->align = DEFALIGN;
 
-	/* -2: specified without value */
-	/* -1: specified as blank (to copy original) */
-	/* N: specified */
+	/* -2: option not present */
+	/* -1: option specified with no number (to copy original) */
+	/* others: specified number or specified as blank (equals 0) */
 	node->extperm = -2;
 	node->extuid = -2;
 	node->extgid = -2;
@@ -685,16 +685,20 @@ int buildromext(struct filenode *node)
 	if (node->extperm != (unsigned int)-1 && node->extperm != (unsigned int)-2) {
 		node->modes = (node->modes&~07777)|node->extperm;
 	}
-	if (node->extuid != (unsigned int)-1 && node->extuid != (unsigned int)-2) {
+	if (node->extuid == (unsigned int)-2) {
+		node->nuid = 0;
+	} else if (node->extuid != (unsigned int)-1) {
 		node->nuid = node->extuid;
 	}
-	if (node->extgid != (unsigned int)-1 && node->extgid != (unsigned int)-2) {
+	if (node->extgid == (unsigned int)-2) {
+		node->ngid = 0;
+	} else if (node->extgid != (unsigned int)-1) {
 		node->ngid = node->extgid;
 	}
-	if (node->exttime != (unsigned int)-1 && node->exttime != (unsigned int)-2) {
-		node->ntime = node->exttime;
-	} else {
+	if (node->exttime == (unsigned int)-2) {
 		node->ntime = 0;
+	} else if (node->exttime != (unsigned int)-1) {
+		node->ntime = node->exttime;
 	}
 
 	/* build romext */
