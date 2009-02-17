@@ -214,6 +214,20 @@ romfs module loaded, or compiled into the kernel) via:
    mount -t romfs /dev/fd0 /mnt
 .EE
 
+.SH CAVEATS
+
+.P
+Extension options might not be supported by older kernels.
+In fact, currently no kernels support showing custom permission and timestamp
+information.
+
+.P
+Please note that if you specify extension options which have no effect,
+they still cause the image format version to become extended.
+It should be just as compatible with older kernels.
+Examples of options with no effect are setting the userid to zero, which
+is the default anyway.
+
 .SH AUTHOR
 This manual page was initially written by Christoph Lameter <clameter@debian.org>,
 for the Debian GNU/Linux system.
