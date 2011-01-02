@@ -35,10 +35,13 @@ will scan the current directory and its subdirectories, build a romfs
 image from the files found, and output it to the file or device you
 specified.
 .PP
-During scanning, it recognizes a special notation.  If a file begins
+The files found during scanning will be incorporated in the filesystem image.
+To allow easier management of filesystem trees
+as a normal user,
+file names starting
 with the @ sign
-(and is empty otherwise),
-it refers to a device special node in the format:
+will cause a device special node to be created in the filesystem image.
+The format is the following:
 .B @name,type,major,minor.
 type can be
 .I b
@@ -48,7 +51,8 @@ for character devices,
 and
 .I p
 for fifos.
-The linux virtual console 1 can thus be included as a
+The first linux virtual console
+can thus be included as a
 file with the name:
 .B @tty1,c,4,1
 
@@ -57,6 +61,7 @@ file with the name:
 .BI -f \ output
 Specifies the file to output the image to.
 This option is required.
+This is to prevent printing binary output on standard output.
 .TP
 .BI -d \ source
 Use the specified directory as the source, not the current directory.
@@ -77,16 +82,16 @@ will guarantee only an alignment of 16 bytes.
 .TP
 .BI -A \ alignment,pattern
 Align objects matching shell wildcard pattern to alignment bytes.
-If one object matches more patterns, then the highest alignment is chosen.
-Alignment has to be a power of two. Patterns either don't contain any
-slashes, in which case files matching those patterns are matched in all
-directories, or start with a leading slash, in which case they are matched
-against absolute paths inside of the romfs filesystem (that is, as if you
-chrooted into the rom filesystem).
+If one object matches more patterns, then the longest alignment is chosen.
+Alignment has to be a power of two.
+If a pattern doesn't contain any slashes, the pattern will match file names
+in all directories.
+Patterns starting with a slash will be expected to match absolute path names
+in the generated romfs file system.
 
 .TP
 .BI -x \ pattern
-Allow to exclude files that match a pattern.
+Exclude files that match a pattern.
 It's useful to exclude CVS directories and backup files (ending in a '~').
 .TP
 .BI -i \ pattern
@@ -116,7 +121,10 @@ Except for the alignment options, these are not supported in current
 in-kernel
 .B
 romfs
-implementations as of early 2009.
+implementations as of early 2010.
+The resulting file system image
+is still readable but no extended information stored
+in the filesystem will be visible (or used).
 
 .TP
 .BI -ealign:N,PATTERN
@@ -223,10 +231,10 @@ information.
 
 .P
 Please note that if you specify extension options which have no effect,
-they still cause the image format version to become extended.
+they still cause the image format version to be marked as extended.
+One such dummy option is enabling uid storage when the the uid is zero,
+or forced to be zero.
 It should be just as compatible with older kernels.
-Examples of options with no effect are setting the userid to zero, which
-is the default anyway.
 
 .SH AUTHOR
 This manual page was initially written by Christoph Lameter <clameter@debian.org>,
