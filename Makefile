@@ -17,7 +17,7 @@ FILES = COPYING NEWS ChangeLog Makefile \
  checkdist \
  .gitignore selftest
 
-prefix = /usr
+prefix = /usr/local
 bindir = $(prefix)/bin
 mandir = $(prefix)/man
 
