@@ -5,7 +5,7 @@ all: genromfs
 
 PACKAGE = genromfs
 VERSION = 0.5.7
-CC = gcc
+CC = cc
 CFLAGS = -O2 -Wall -DVERSION=\"$(VERSION)\"#-g#
 LDFLAGS = -s#-g
 
@@ -17,9 +17,9 @@ FILES = COPYING NEWS ChangeLog Makefile \
  checkdist \
  .gitignore selftest
 
-prefix = /usr
-bindir = $(prefix)/bin
-mandir = $(prefix)/man
+PREFIX ?= /usr/local
+bindir = /bin
+mandir = /man
 
 genromfs: genromfs.o
 	$(CC) $(LDFLAGS) genromfs.o -o genromfs
@@ -55,9 +55,6 @@ install-bin:
 install-man:
 	# genromfs 0.5 installed the man page in this file,
 	# remove it before someone notices :)
-	if [ -f $(PREFIX)$(bindir)/man8 ]; then \
-		rm -f $(PREFIX)$(bindir)/man8; \
-	fi
 	mkdir -p $(PREFIX)$(mandir)/man8
 	install -m 644 genromfs.8 $(PREFIX)$(mandir)/man8/
 
