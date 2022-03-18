@@ -794,13 +794,19 @@ int buildromext(struct filenode *node)
 	return node->extlen;
 }
 
+int comparedirent(const struct dirent **ent1, const struct dirent **ent2)
+{
+  return strcmp((*ent1)->d_name, (*ent2)->d_name);
+}
+
 int processdir(int level, const char *base, const char *dirname, struct stat *sb,
 	struct filenode *dir, struct filenode *root, int curroffset)
 {
-	DIR *dirfd;
 	struct dirent *dp;
 	struct filenode *n, *link;
 	struct extmatches *pa;
+	struct dirent **namelist;
+	int nentries;
 
 	/* To make sure . and .. are handled correctly in the
 	 * root directory, we add them first.  Note also that we
@@ -832,11 +838,13 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 		}
 	}
 
-	dirfd = opendir(dir->realname);
-	if (dirfd == NULL) {
+	nentries = scandir(dir->realname, &namelist, NULL, comparedirent);
+	if (nentries < 0) {
 		perror(dir->realname);
+		return curroffset;
 	}
-	while(dirfd && (dp = readdir(dirfd))) {
+	while(nentries--) {
+		dp = namelist[nentries];
 		/* don't process main . and .. twice */
 		if (level <= 1 &&
 		    (strcmp(dp->d_name, ".") == 0
@@ -961,7 +969,6 @@ int processdir(int level, const char *base, const char *dirname, struct stat *sb
 			}
 		}
 	}
-	if (dirfd) closedir(dirfd);
 	return curroffset;
 }
 
